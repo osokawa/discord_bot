@@ -110,7 +110,13 @@ class Mondai {
 
 		// 降参
 		if (text.match(new RegExp(this.feature.config.options.surrenderPattern, 'i'))) {
-			msg.channel.send(`情けない子… 正解は**${ans.title}**で再生時間は${ans.time}だよ\n出直しておいで!`)
+			if (ans.mode === 'mosaic') {
+				const attachment = new Attachment(path.join(ans.tmpDir, 'original.jpg'))
+				msg.channel.send(`情けない子… 正解は**${ans.title}**で再生時間は${ans.time}だよ\nでもモザイクだからしょうがないよね`
+					+ "\nオリジナルの画像はこれだロボ", attachment)
+			} else {
+				msg.channel.send(`情けない子… 正解は**${ans.title}**で再生時間は${ans.time}だよ\n出直しておいで!`)
+			}
 			await fs.rmdir(ans.tmpDir, { recursive: true })
 			this.state = 'free'
 			return
