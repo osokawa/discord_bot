@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "scripts": {
-    "start": "node -r dotenv/config src/index.js"
+    "start": "node -r dotenv/config src/index.js",
+    "test": "jest"
   },
   "license": "MIT",
   "private": true,
@@ -12,5 +13,8 @@
     "axios": "^0.19.1",
     "discord.js": "^11.5.1",
     "dotenv": "^8.2.0"
+  },
+  "devDependencies": {
+    "jest": "^25.1.0"
   }
 }
