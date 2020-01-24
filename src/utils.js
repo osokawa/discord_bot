@@ -1,5 +1,5 @@
 exports.parseCommand = function (string) {
-	const found = string.match(`^!([a-zA-Z_-]+)(\\s+?.+)?$`)
+	const found = string.match(/^!([a-zA-Z_-]+)(\s+?.+)?$/)
 	if (!found) {
 		return null
 	}

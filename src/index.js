@@ -1,14 +1,14 @@
-const { Client, Attachment } = require('discord.js');
-const client = new Client();
+const { Client } = require('discord.js')
+const client = new Client()
 
 const features = require('../config/features.js')
 
 let isFeaturesReady = false
 
 client.on('ready', async () => {
-	console.log(`Logged in as ${client.user.tag}!`);
+	console.log(`Logged in as ${client.user.tag}!`)
 
-	for (const [k, v] of features) {
+	for (const [, v] of features) {
 		try {
 			await v.init(client)
 		} catch (e) {
@@ -44,11 +44,11 @@ client.on('message', async (msg) => {
 			msg.channel.send('bot の処理中にエラーが発生しました。')
 		}
 	}))
-});
+})
 
 process.on('SIGINT', async () => {
 	client.destroy()
-	for (const [k, v] of features) {
+	for (const [, v] of features) {
 		try {
 			await v.finalize()
 		} catch (e) {

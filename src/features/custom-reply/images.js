@@ -31,7 +31,7 @@ exports.Images = class {
 		}
 
 		if (!isValidImageId(args[0])) {
-			msg.channel.send("マトモなidを指定して欲しいロボ。申し訳ないロボ…\nあと拡張子は必須ロボよ")
+			msg.channel.send('マトモなidを指定して欲しいロボ。申し訳ないロボ…\nあと拡張子は必須ロボよ')
 			return
 		}
 
@@ -42,7 +42,7 @@ exports.Images = class {
 
 	async listCommand(args, msg) {
 		const list = await fs.readdir(`./config/custom-reply/${this.channelInstance.channel.id}/images/`)
-		msg.channel.send("これがファイルリストロボよー\n" + list.join("\n"))
+		msg.channel.send('これがファイルリストロボよー\n' + list.join('\n'))
 	}
 
 	async removeCommand(args, msg) {

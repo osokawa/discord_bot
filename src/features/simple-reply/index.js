@@ -7,12 +7,12 @@ class SimpleReply {
 
 	async onMessage(msg) {
 		if (msg.content === 'ping') {
-			msg.reply('Pong!');
+			msg.reply('Pong!')
 		}
 
 		if (msg.content.indexOf('チノちゃんかわいい') !== -1) {
 			const attachment = new Attachment('./assets/chino.png')
-			msg.reply('わかる', { file: attachment });
+			msg.reply('わかる', { file: attachment })
 		}
 	}
 }

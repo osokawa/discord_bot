@@ -3,7 +3,7 @@ const axios = require('axios')
 const fs = require('fs').promises
 const utils = require('../../utils.js')
 
-function validateParsedConfig(config) {
+function validateParsedConfig() {
 	// TODO: バリデーション実施。ダメな時は throw する
 }
 
@@ -117,8 +117,8 @@ module.exports = class {
 	}
 
 	async listCommand(args, msg) {
-		msg.channel.send("登録されているソース一覧ロボ\n"
-			+ [...this.configSources].map(([k, v]) => `${k}: ${v.source}`).join("\n"))
+		msg.channel.send('登録されているソース一覧ロボ\n'
+			+ [...this.configSources].map(([k, v]) => `${k}: ${v.source}`).join('\n'))
 	}
 
 	async removeCommand(args, msg) {

@@ -26,7 +26,7 @@ class CustomReply {
 	}
 
 	async _processCustomResponse(msg) {
-		for (const [k, v] of this.config.config) {
+		for (const [, v] of this.config.config) {
 			for (const content of v.contents) {
 				if (msg.content.match(new RegExp(content.target))) {
 					const response = utils.randomPick(content.responses)
