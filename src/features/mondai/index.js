@@ -38,8 +38,13 @@ function normalizeAnswerMessage(message) {
 class Mondai {
 	constructor(feature) {
 		this.feature = feature
+		this._resetState()
+	}
+
+	_resetState() {
 		this.state = 'free'
 		this.answer = null
+		this.incorrectCount = 0
 	}
 
 	async _processMondaiCommand(args, msg) {
@@ -84,13 +89,20 @@ class Mondai {
 			options.r = episode.excludeRange
 		}
 
-		const generateResult = await generateMondaiImage(mode, episode.filename, outputPath, options)
-		this.answer = {
-			title: episode.title,
-			pattern: episode.pattern,
-			time: generateResult.time,
-			mode,
-			tmpDir
+		try {
+			const generateResult = await generateMondaiImage(mode, episode.filename, outputPath, options)
+			this.answer = {
+				title: episode.title,
+				pattern: episode.pattern,
+				time: generateResult.time,
+				mode,
+				tmpDir
+			}
+		} catch (e) {
+			console.error(e)
+			msg.channel.send('問題の生成中にエラーが発生したロボ…稀によくあるのでめげずにリトライして欲しいロボ')
+			this._resetState()
+			return
 		}
 
 		const attachment = new Attachment(outputPath)
@@ -101,6 +113,7 @@ class Mondai {
 		const text = normalizeAnswerMessage(msg.content)
 		const ans = this.answer
 		const title = utils.replaceEmoji(ans.title, msg.guild.emojis)
+		const tmpDir = ans.tmpDir
 
 		// 正解
 		if (text.match(new RegExp(ans.pattern, 'i'))) {
@@ -111,8 +124,8 @@ class Mondai {
 			} else {
 				msg.channel.send(`:ok_hand: 正解! **${title}**です! ちなみに再生時間は${ans.time}だよ`)
 			}
-			await fs.rmdir(ans.tmpDir, { recursive: true })
-			this.state = 'free'
+			this._resetState()
+			await fs.rmdir(tmpDir, { recursive: true })
 			return
 		}
 
@@ -125,14 +138,29 @@ class Mondai {
 			} else {
 				msg.channel.send(`情けない子… 正解は**${title}**で再生時間は${ans.time}だよ\n出直しておいで!`)
 			}
-			await fs.rmdir(ans.tmpDir, { recursive: true })
-			this.state = 'free'
+			this._resetState()
+			await fs.rmdir(tmpDir, { recursive: true })
 			return
 		}
 
 		// 不正解
 		for (const episode of this.feature.config.episodes) {
 			if (text.match(new RegExp(episode.pattern, 'i'))) {
+				this.incorrectCount += 1
+
+				if (this.incorrectCount == 3) {
+					if (ans.mode === 'mosaic') {
+						const attachment = new Attachment(path.join(ans.tmpDir, 'original.jpg'))
+						msg.channel.send(`:no_entry_sign: 間違えすぎロボよ… 正解は**${title}**で再生時間は${ans.time}ロボ\nでもモザイクだからしょうがないロボね`
+							+ '\nオリジナルの画像はこれだロボ', attachment)
+					} else {
+						msg.channel.send(`:no_entry_sign: 間違えすぎロボよ…正解は**${title}**で再生時間は${ans.time}ロボ\n出直してくるロボ!`)
+					}
+					this._resetState()
+					await fs.rmdir(tmpDir, { recursive: true })
+					return
+				}
+
 				msg.channel.send(':no_entry_sign: 不正解。もうちょっと頑張るか降参してね')
 				return
 			}
