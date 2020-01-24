@@ -4,7 +4,12 @@ module.exports = {
 		'es6': true,
 		'node': true
 	},
-	'extends': 'eslint:recommended',
+	'plugins': ['jest'],
+	'extends': [
+		'eslint:recommended',
+		'plugin:jest/recommended',
+		'plugin:jest/style'
+	],
 	'globals': {
 		'Atomics': 'readonly',
 		'SharedArrayBuffer': 'readonly'
