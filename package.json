@@ -4,7 +4,8 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node -r dotenv/config src/index.js",
-    "test": "jest"
+    "test": "jest",
+    "lint": "eslint 'src/**/*.js'"
   },
   "license": "MIT",
   "private": true,
@@ -15,6 +16,7 @@
     "dotenv": "^8.2.0"
   },
   "devDependencies": {
+    "eslint": "^6.8.0",
     "jest": "^25.1.0"
   }
 }
