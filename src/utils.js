@@ -38,3 +38,11 @@ exports.subCommandProxy = async function (table, [subcommand, ...args], msg) {
 		msg.channel.send(`知らないサブコマンドロボねえ…: ${validSubCommands}`)
 	}
 }
+
+
+exports.replaceEmoji = function (text, emojis) {
+	return text.replace(/:(\w+):/g, (match, emojiName) => {
+		const foundEmoji = emojis.find(x => x.name === emojiName)
+		return foundEmoji ? foundEmoji.toString() : match
+	})
+}

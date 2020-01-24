@@ -27,6 +27,14 @@ function generateMondaiImage(mode, inPath, outPath, opts = {}) {
 	})
 }
 
+function normalizeAnswerMessage(message) {
+	const replaceTables = [
+		[/\s+/g, ' '],
+	]
+	const replaced = replaceTables.reduce((a, i) => a.replace(i[0], i[1]), message)
+	return replaced.normalize('NFKC')
+}
+
 class Mondai {
 	constructor(feature) {
 		this.feature = feature
@@ -90,17 +98,18 @@ class Mondai {
 	}
 
 	async _processAnswerMessage(msg) {
-		const text = msg.content
+		const text = normalizeAnswerMessage(msg.content)
 		const ans = this.answer
+		const title = utils.replaceEmoji(ans.title, msg.guild.emojis)
 
 		// 正解
 		if (text.match(new RegExp(ans.pattern, 'i'))) {
 			if (ans.mode === 'mosaic') {
 				const attachment = new Attachment(path.join(ans.tmpDir, 'original.jpg'))
-				msg.channel.send(`:ok_hand: 正解! **${ans.title}**です! ちなみに再生時間は${ans.time}だよ`
+				msg.channel.send(`:ok_hand: 正解! **${title}**です! ちなみに再生時間は${ans.time}だよ`
 					+ '\nオリジナルの画像はこちら', attachment)
 			} else {
-				msg.channel.send(`:ok_hand: 正解! **${ans.title}**です! ちなみに再生時間は${ans.time}だよ`)
+				msg.channel.send(`:ok_hand: 正解! **${title}**です! ちなみに再生時間は${ans.time}だよ`)
 			}
 			await fs.rmdir(ans.tmpDir, { recursive: true })
 			this.state = 'free'
@@ -111,10 +120,10 @@ class Mondai {
 		if (text.match(new RegExp(this.feature.config.options.surrenderPattern, 'i'))) {
 			if (ans.mode === 'mosaic') {
 				const attachment = new Attachment(path.join(ans.tmpDir, 'original.jpg'))
-				msg.channel.send(`情けない子… 正解は**${ans.title}**で再生時間は${ans.time}だよ\nでもモザイクだからしょうがないよね`
+				msg.channel.send(`情けない子… 正解は**${title}**で再生時間は${ans.time}だよ\nでもモザイクだからしょうがないよね`
 					+ '\nオリジナルの画像はこれだロボ', attachment)
 			} else {
-				msg.channel.send(`情けない子… 正解は**${ans.title}**で再生時間は${ans.time}だよ\n出直しておいで!`)
+				msg.channel.send(`情けない子… 正解は**${title}**で再生時間は${ans.time}だよ\n出直しておいで!`)
 			}
 			await fs.rmdir(ans.tmpDir, { recursive: true })
 			this.state = 'free'

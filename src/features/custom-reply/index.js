@@ -4,13 +4,6 @@ const fs = require('fs').promises
 const { Images, isValidImageId } = require('./images.js')
 const Config = require('./config.js')
 
-function replaceEmoji(text, emojis) {
-	return text.replace(/:(\w+):/g, (match, emojiName) => {
-		const foundEmoji = emojis.find(x => x.name === emojiName)
-		return foundEmoji ? foundEmoji.toString() : match
-	})
-}
-
 class CustomReply {
 	constructor(feature, channel) {
 		this.feature = feature
@@ -53,7 +46,7 @@ class CustomReply {
 						options = { ...options, file: attachment }
 					}
 
-					text = replaceEmoji(text, msg.guild.emojis)
+					text = utils.replaceEmoji(text, msg.guild.emojis)
 					if (response.reply !== undefined && !response.reply) {
 						msg.channel.send(text, options)
 					} else {
