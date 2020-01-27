@@ -11,16 +11,22 @@ class Mondai {
 	}
 
 	async _processMondaiCommand(rawArgs, msg) {
-		if (this.game !== null) {
-			msg.channel.send('前回の問題がまだ進行中みたいロボ')
-			return
-		}
-
 		let args, options
 		try {
 			({ args, options } = utils.parseCommandArgs(rawArgs))
 		} catch (e) {
 			msg.channel.send(`変なコマンドを指定していないかロボ?: ${e}`)
+			return
+		}
+
+		if (this.game !== null) {
+			if (args.length === 1 && args[0] === 'stop') {
+				await this.game.finalize()
+				this.game = null
+				return
+			}
+
+			msg.channel.send(`前回の問題がまだ進行中みたいロボ: !${this.feature.cmdname} stop で強制終了ロボ`)
 			return
 		}
 
@@ -66,6 +72,7 @@ class Mondai {
 			}
 
 			if (!res) {
+				await this.game.finalize()
 				this.game = null
 			}
 		}

@@ -177,14 +177,10 @@ module.exports = class {
 			return true
 		}
 
-		const res = await this._processAnswerMessage(msg)
-		if (!res) {
-			this._finalize(msg)
-		}
-		return res
+		return await this._processAnswerMessage(msg)
 	}
 
-	async _finalize(msg) {
+	async finalize() {
 		if (this.options.repeat) {
 			let comment = ''
 			if (this.correctCount < 5) {
@@ -194,8 +190,9 @@ module.exports = class {
 			} else {
 				comment = '超スゴイロボ!'
 			}
-			msg.channel.send(`お疲れさまロボ。合計正解数は${this.correctCount}回ロボよ!\n${comment}`)
+			this.channelInstance.channel.send(`お疲れさまロボ。合計正解数は${this.correctCount}回ロボよ!\n${comment}`)
 		}
+
 		await fs.rmdir(this.tmpDir, { recursive: true })
 	}
 }
