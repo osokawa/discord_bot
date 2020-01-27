@@ -44,6 +44,7 @@ module.exports = class {
 		this.incorrectCount = 0
 		this.correctCount = 0
 		this.incorrectLimit = 3
+		this.ready = false
 	}
 
 	get _isAudioMode() {
@@ -56,6 +57,8 @@ module.exports = class {
 	}
 
 	async _postMondai() {
+		this.ready = false
+
 		const episode = utils.randomPick(this.feature.config.episodes)
 		this.tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mondai-'))
 
@@ -88,6 +91,7 @@ module.exports = class {
 			throw e
 		}
 
+		this.ready = true
 		const attachment = new Attachment(outputPath)
 		this.channelInstance.channel.send('問題ロボ。頑張るロボ!', attachment)
 	}
@@ -173,7 +177,7 @@ module.exports = class {
 
 	// true なら続行
 	async onMessage(msg) {
-		if (msg.author.bot) {
+		if (msg.author.bot || !this.ready) {
 			return true
 		}
 
