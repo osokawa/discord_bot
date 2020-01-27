@@ -81,10 +81,20 @@ exports.parseCommandArgs = function (argsToParse, optionsWithValue = [], minimum
 	}
 
 	if (args.length < minimumArgs) {
-		throw '引数の数が足りない'
+		throw '引数の数が足りません'
 	}
 
 	return {args, options}
+}
+
+exports.getOption = function (options, keys, defaultValue = false) {
+	for (const key of keys) {
+		if (key in options) {
+			return options[key]
+		}
+	}
+
+	return defaultValue
 }
 
 exports.delay = function (ms) {

@@ -45,7 +45,9 @@ class Mondai {
 		}
 
 		try {
-			this.game = new Game(this, mode, options)
+			this.game = new Game(this, mode, {
+				repeat: utils.getOption(options, ['repeat', 'r'])
+			})
 			await this.game.init(msg)
 		} catch (e) {
 			this.game = null
