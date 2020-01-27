@@ -9,7 +9,7 @@ function validateParsedConfig() {
 
 function isValidId(id) {
 	const validIdRegExp = /^[a-zA-Z1-9-_]{2,32}$/
-	return id.match(validImageIdRegExp) ? true : false
+	return id.match(validIdRegExp) ? true : false
 }
 
 module.exports = class {
