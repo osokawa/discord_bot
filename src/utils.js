@@ -46,3 +46,8 @@ exports.replaceEmoji = function (text, emojis) {
 		return foundEmoji ? foundEmoji.toString() : match
 	})
 }
+
+exports.isValidUrl(url) = function (url) {
+	const validUrlRegExp = /^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$/
+	return id.match(validUrlRegExp) ? true : false
+}

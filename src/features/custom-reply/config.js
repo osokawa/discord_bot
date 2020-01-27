@@ -7,6 +7,11 @@ function validateParsedConfig() {
 	// TODO: バリデーション実施。ダメな時は throw する
 }
 
+function isValidId(id) {
+	const validIdRegExp = /^[a-zA-Z1-9-_]{2,32}$/
+	return id.match(validImageIdRegExp) ? true : false
+}
+
 module.exports = class {
 	constructor(channelInstance) {
 		this.channelInstance = channelInstance
@@ -103,11 +108,20 @@ module.exports = class {
 	async addCommand(args, msg) {
 		if (args.length < 2) {
 			msg.channel.send('ID と URL をして欲しいだなも')
+			return
 		}
 
 		const [id, url] = args
 
-		// TODO: ID と URL の妥当性チェック
+		if (!isValidId(id)) {
+			msg.channel.send('まともな ID をして欲しいだなも')
+			return
+		}
+
+		if (!utils.isValidUrl(url)) {
+			msg.channel.send('まともな URL をして欲しいだなも')
+			return
+		}
 
 		this.configSources.set(id, { source: url, format: 'toml' })
 		await this._updateConfig(id, true)
