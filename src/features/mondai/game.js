@@ -116,7 +116,8 @@ module.exports = class {
 		const title = utils.replaceEmoji(ans.title, msg.guild.emojis)
 
 		// 正解
-		if (text.match(new RegExp(ans.pattern, 'i'))) {
+		const correctMatch = text.match(new RegExp(ans.pattern, 'i'))
+		if (correctMatch && correctMatch[0] === text) {
 			if (this._isMosaicMode) {
 				const attachment = new Attachment(path.join(this.tmpDir, 'original.jpg'))
 				msg.channel.send(`:ok_hand: 正解ロボ! **${title}** ちなみに再生時間は${ans.time}だロボよ`
@@ -160,7 +161,8 @@ module.exports = class {
 
 		// 不正解
 		for (const episode of this.feature.config.episodes) {
-			if (text.match(new RegExp(episode.pattern, 'i'))) {
+			const incorrectMatch = text.match(new RegExp(episode.pattern, 'i'))
+			if (incorrectMatch && incorrectMatch[0] === text) {
 				this.incorrectCount++
 				if (this.incorrectCount == this.incorrectLimit) {
 					await this._postIncorrectLimitMessage(msg, ans, title)
