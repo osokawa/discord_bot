@@ -187,12 +187,18 @@ module.exports = class {
 	async finalize() {
 		if (this.options.repeat) {
 			let comment = ''
-			if (this.correctCount < 5) {
+			if (this.correctCount === 0) {
+				comment = '0回とかありえないロボ… どうして始めたロボ?'
+			} else if (this.correctCount < 5) {
 				comment = 'もうちょっと頑張るロボ…'
-			} else if (this. correctCount < 10) {
-				comment = 'なかなかやるロボね!'
+			} else if (this.correctCount < 10) {
+				comment = 'なかなかやるロボね'
+			} else if (this.correctCount < 20) {
+				comment = 'かなりすごいロボね!'
+			} else if (this.correctCount < 50) {
+				comment = '超スゴイロボ!!'
 			} else {
-				comment = '超スゴイロボ!'
+				comment = '本当に人間ロボ? ロボットじゃないかロボ?!'
 			}
 			this.channelInstance.channel.send(`お疲れさまロボ。合計正解数は${this.correctCount}回ロボよ!\n${comment}`)
 		}
