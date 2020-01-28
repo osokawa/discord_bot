@@ -3,7 +3,7 @@ const fs = require('fs').promises
 const utils = require('../../utils.js')
 
 function isValidImageId(id) {
-	const validImageIdRegExp = /^[a-zA-Z1-9-_]{2,32}\.(png|jpg|jpeg|gif)$/
+	const validImageIdRegExp = /^[a-zA-Z0-9-_]{2,32}\.(png|jpg|jpeg|gif)$/
 	return id.match(validImageIdRegExp) ? true : false
 }
 exports.isValidImageId = isValidImageId
