@@ -2,6 +2,26 @@ const TOML = require('@iarna/toml')
 const fs = require('fs')
 const path = require('path')
 
+function escapeRegExp(message) {
+	const replaceTables = [
+		['\\', '\\\\'],
+		['*', '\\*'],
+		['+', '\\+'],
+		['?', '\\?'],
+		['{', '\\{'],
+		['}', '\\}'],
+		['(', '\\('],
+		[')', '\\)'],
+		['[', '\\['],
+		[']', '\\]'],
+		['^', '\\^'],
+		['$', '\\$'],
+		['-', '\\-'],
+		['|', '\\|'],
+	]
+	return replaceTables.reduce((a, i) => a.replace(i[0], i[1]), message)
+}
+
 function normalizeAnswerMessage(message) {
 	const replaceTables = [
 		[/\s+/g, ' '],
@@ -20,7 +40,7 @@ for (const line of stdinBuffer.split('\n')) {
 	episodes.push({
 		filename: line,
 		title,
-		pattern: normalizeAnswerMessage(title)
+		pattern: escapeRegExp(normalizeAnswerMessage(title))
 	})
 }
 
