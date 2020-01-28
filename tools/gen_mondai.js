@@ -5,6 +5,7 @@ const path = require('path')
 function escapeRegExp(message) {
 	const replaceTables = [
 		['\\', '\\\\'],
+		['.', '\\.'],
 		['*', '\\*'],
 		['+', '\\+'],
 		['?', '\\?'],
@@ -25,6 +26,7 @@ function escapeRegExp(message) {
 function normalizeAnswerMessage(message) {
 	const replaceTables = [
 		[/\s+/g, ' '],
+		[/^\d\d\. /g, ''],
 	]
 	const replaced = replaceTables.reduce((a, i) => a.replace(i[0], i[1]), message)
 	return replaced.normalize('NFKC')
