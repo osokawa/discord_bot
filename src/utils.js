@@ -105,6 +105,20 @@ exports.delay = function (ms) {
 	})
 }
 
+exports.weightedRandom = function (weights) {
+	if (!Array.isArray(weights) || weights.length == 0) {
+		throw new TypeError('invalid argument')
+	}
+
+	const list = weights.reduce((a, c) => [...a, a[a.length - 1] + c], [0])
+	const random = Math.floor(Math.random() * list[list.length - 1])
+	for (let i = 1; i < list.length; i++) {
+		if (list[i - 1] <= random && random < list[i]) {
+			return i - 1
+		}
+	}
+}
+
 exports.randomPick = function (array) {
 	return array[Math.floor(Math.random() * array.length)]
 }
