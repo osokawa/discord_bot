@@ -120,6 +120,10 @@ exports.weightedRandom = function (weights) {
 }
 
 exports.randomPick = function (array) {
+	if (!Array.isArray(array)) {
+		return array
+	}
+
 	return array[Math.floor(Math.random() * array.length)]
 }
 

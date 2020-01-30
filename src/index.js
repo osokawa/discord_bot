@@ -2,15 +2,24 @@ const { Client } = require('discord.js')
 const client = new Client()
 
 const features = require('../config/features.js')
+const GlobalConfig = require('./global-config.js')
 
 let isFeaturesReady = false
+const gc = new GlobalConfig('./config/config.toml')
 
 client.on('ready', async () => {
 	console.log(`Logged in as ${client.user.tag}!`)
 
+	try {
+		await gc.init()
+	} catch (e) {
+		console.error(e)
+		process.exit(1)
+	}
+
 	for (const [, v] of features) {
 		try {
-			await v.init(client)
+			await v.init(gc, client)
 		} catch (e) {
 			console.error(e)
 			process.exit(1)
