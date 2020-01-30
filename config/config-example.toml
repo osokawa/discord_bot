@@ -50,6 +50,7 @@ invalidImageIdInResponse = '''
 インジェクションを試みてないかロボ? 絶対にやめるロボよ…'''
 
 imageIdThatDoesNotExist = 'どうも使用できない画像 <%= imageId %> がレスポンスに含まれているようだロボ'
+gachaImageNotFound = 'ガチャに使用できる画像が一つもないロボ'
 
 [message.customReply.config]
 errorOnReloading = 'ID: <%= id %> のリロード中にエラーが発生したロボ…'

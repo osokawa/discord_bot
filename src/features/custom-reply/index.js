@@ -21,38 +21,55 @@ class CustomReply {
 		this.initialized = true
 	}
 
+	async _processPickedResponse(msg, response) {
+		let text = response.text || ''
+		let options = {}
+
+		if (response.action === 'gacha') {
+			let list = await fs.readdir(`./config/custom-reply/${this.channel.id}/images/`)
+			if (response.pattern) {
+				list = list.filter(x => x.match(new RegExp(response.pattern)))
+			}
+
+			if (list.length === 0) {
+				await this.#gc.send(msg, 'customReply.gachaImageNotFound')
+				return
+			}
+			options.file = new Attachment(this.images.getImagePathById(utils.randomPick(list)))
+		} else {
+			const imageId = response.image
+			if (imageId) {
+				if (!isValidImageId(imageId)) {
+					await this.#gc.send(msg, 'customReply.invalidImageIdInResponse', { imageId })
+					console.log(`無効な画像ID ${imageId}`)
+					return
+				}
+				const path = this.images.getImagePathById(imageId)
+				try {
+					await fs.access(path)
+				} catch (_) {
+					await this.#gc.send(msg, 'customReply.imageIdThatDoesNotExist', { imageId })
+					return
+				}
+				const attachment = new Attachment(path)
+				options.file = attachment
+			}
+		}
+
+		text = utils.replaceEmoji(text, msg.guild.emojis)
+		if (response.reply !== undefined && !response.reply) {
+			msg.channel.send(text, options)
+		} else {
+			msg.reply(text, options)
+		}
+	}
+
 	async _processCustomResponse(msg) {
 		for (const [, v] of this.config.config) {
 			for (const content of v.contents) {
 				if (msg.content.match(new RegExp(content.target))) {
 					const response = utils.randomPick(content.responses)
-					let text = response.text || ''
-					let options = {}
-
-					const imageId = response.image
-					if (imageId) {
-						if (!isValidImageId(imageId)) {
-							await this.#gc.send(msg, 'customReply.invalidImageIdInResponse', { imageId })
-							console.log(`無効な画像ID ${imageId}`)
-							break
-						}
-						const path = this.images.getImagePathById(imageId)
-						try {
-							await fs.access(path)
-						} catch (_) {
-							await this.#gc.send(msg, 'customReply.imageIdThatDoesNotExist', { imageId })
-							break
-						}
-						const attachment = new Attachment(path)
-						options = { ...options, file: attachment }
-					}
-
-					text = utils.replaceEmoji(text, msg.guild.emojis)
-					if (response.reply !== undefined && !response.reply) {
-						msg.channel.send(text, options)
-					} else {
-						msg.reply(text, options)
-					}
+					await this._processPickedResponse(msg, response)
 					break
 				}
 			}
