@@ -5,12 +5,15 @@ const { Images, isValidImageId } = require('./images.js')
 const Config = require('./config.js')
 
 class CustomReply {
-	constructor(feature, channel) {
+	#gc
+
+	constructor(feature, channel, gc) {
 		this.feature = feature
 		this.channel = channel
+		this.#gc = gc
 		this.initialized = false
-		this.images = new Images(this)
-		this.config = new Config(this)
+		this.images = new Images(this, gc)
+		this.config = new Config(this, gc)
 	}
 
 	async init() {
@@ -29,9 +32,7 @@ class CustomReply {
 					const imageId = response.image
 					if (imageId) {
 						if (!isValidImageId(imageId)) {
-							msg.channel.send(
-								`どうにも無効な画像ID ${imageId} がレスポンスに含まれているようだロボ`
-								+ '\nインジェクションを試みてないかロボ? 絶対にやめるロボよ…')
+							await this.#gc.send(msg, 'customReply.invalidImageIdInResponse', { imageId })
 							console.log(`無効な画像ID ${imageId}`)
 							break
 						}
@@ -39,7 +40,7 @@ class CustomReply {
 						try {
 							await fs.access(path)
 						} catch (_) {
-							msg.channel.send(`どうも使用できない画像 ${imageId} がレスポンスに含まれているようだロボ`)
+							await this.#gc.send(msg, 'customReply.imageIdThatDoesNotExist', { imageId })
 							break
 						}
 						const attachment = new Attachment(path)
@@ -86,18 +87,21 @@ class CustomReply {
 }
 
 module.exports = class {
+	#gc
+
 	constructor(cmdname) {
 		this.cmdname = cmdname
 	}
 
-	async init() {
+	async init(gc) {
+		this.#gc = gc
 	}
 
 	async finalize() {
 	}
 
 	createChannelInstance(channel) {
-		const client = new CustomReply(this, channel)
+		const client = new CustomReply(this, channel, this.#gc)
 		client.init()
 		return client
 	}

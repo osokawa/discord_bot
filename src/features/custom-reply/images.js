@@ -9,8 +9,11 @@ function isValidImageId(id) {
 exports.isValidImageId = isValidImageId
 
 exports.Images = class {
-	constructor(channelInstance) {
+	#gc
+
+	constructor(channelInstance, gc) {
 		this.channelInstance = channelInstance
+		this.#gc = gc
 		this.state = 'free'
 		this.imageName = null
 	}
@@ -21,49 +24,49 @@ exports.Images = class {
 
 	async uploadCommand(args, msg) {
 		if (this.state === 'waitingImage') {
-			msg.channel.send('画像のアップロードをキャンセルしたロボ')
+			await this.#gc.send(msg, 'customReply.images.uploadingImageCancel')
 			this.state = 'free'
 		}
 
 		if (args < 1) {
-			msg.channel.send('idを指定して欲しいロボ')
+			await this.#gc.send(msg, 'customReply.images.haveToSpecifyId')
 			return
 		}
 
 		if (!isValidImageId(args[0])) {
-			msg.channel.send('マトモなidを指定して欲しいロボ。申し訳ないロボ…\nあと拡張子は必須ロボよ')
+			await this.#gc.send(msg, 'customReply.images.haveToSpecifyValidIdAndSorry')
 			return
 		}
 
 		this.imageName = args[0]
 		this.state = 'waitingImage'
-		msg.channel.send('画像を送信するロボ')
+		await this.#gc.send(msg, 'customReply.images.readyToUpload')
 	}
 
 	async listCommand(args, msg) {
 		const list = await fs.readdir(`./config/custom-reply/${this.channelInstance.channel.id}/images/`)
-		msg.channel.send('これがファイルリストロボよー\n' + list.join('\n'))
+		await this.#gc.send(msg, 'customReply.images.list', { images: list.join('\n') })
 	}
 
 	async removeCommand(args, msg) {
 		if (args < 1) {
-			msg.channel.send('idを指定して欲しいロボ')
+			await this.#gc.send(msg, 'customReply.images.haveToSpecifyId')
 			return
 		}
 
 		if (!isValidImageId(args[0])) {
-			msg.channel.send('マトモなidを指定するロボ')
+			await this.#gc.send(msg, 'customReply.images.haveToSpecifyId')
 			return
 		}
 
 		try {
 			await fs.unlink(this.getImagePathById(args[0]))
 		} catch (_) {
-			msg.channel.send('画像の削除に失敗したロボ。そもそも存在しないidを指定していないかロボ?')
+			await this.#gc.send(msg, 'customReply.images.removingFailed')
 			return
 		}
 
-		msg.channel.send('画像を削除したロボ!')
+		await this.#gc.send(msg, 'customReply.images.removingComplete')
 	}
 
 	async command(args, msg) {
@@ -86,7 +89,7 @@ exports.Images = class {
 				responseType: 'arraybuffer'
 			})
 			await fs.writeFile(this.getImagePathById(this.imageName), Buffer.from(res.data))
-			msg.channel.send('画像のアップロードが完了したロボよー')
+			await this.#gc.send(msg, 'customReply.images.uploadingComplete')
 
 			this.state = 'free'
 		}
