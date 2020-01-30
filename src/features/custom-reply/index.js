@@ -5,12 +5,15 @@ const { Images, isValidImageId } = require('./images.js')
 const Config = require('./config.js')
 
 class CustomReply {
-	constructor(feature, channel) {
+	#gc
+
+	constructor(feature, channel, gc) {
 		this.feature = feature
 		this.channel = channel
+		this.#gc = gc
 		this.initialized = false
-		this.images = new Images(this)
-		this.config = new Config(this)
+		this.images = new Images(this, gc)
+		this.config = new Config(this, gc)
 	}
 
 	async init() {
@@ -18,40 +21,55 @@ class CustomReply {
 		this.initialized = true
 	}
 
+	async _processPickedResponse(msg, response) {
+		let text = response.text || ''
+		let options = {}
+
+		if (response.action === 'gacha') {
+			let list = await fs.readdir(`./config/custom-reply/${this.channel.id}/images/`)
+			if (response.pattern) {
+				list = list.filter(x => x.match(new RegExp(response.pattern)))
+			}
+
+			if (list.length === 0) {
+				await this.#gc.send(msg, 'customReply.gachaImageNotFound')
+				return
+			}
+			options.file = new Attachment(this.images.getImagePathById(utils.randomPick(list)))
+		} else {
+			const imageId = response.image
+			if (imageId) {
+				if (!isValidImageId(imageId)) {
+					await this.#gc.send(msg, 'customReply.invalidImageIdInResponse', { imageId })
+					console.log(`無効な画像ID ${imageId}`)
+					return
+				}
+				const path = this.images.getImagePathById(imageId)
+				try {
+					await fs.access(path)
+				} catch (_) {
+					await this.#gc.send(msg, 'customReply.imageIdThatDoesNotExist', { imageId })
+					return
+				}
+				const attachment = new Attachment(path)
+				options.file = attachment
+			}
+		}
+
+		text = utils.replaceEmoji(text, msg.guild.emojis)
+		if (response.reply !== undefined && !response.reply) {
+			msg.channel.send(text, options)
+		} else {
+			msg.reply(text, options)
+		}
+	}
+
 	async _processCustomResponse(msg) {
 		for (const [, v] of this.config.config) {
 			for (const content of v.contents) {
 				if (msg.content.match(new RegExp(content.target))) {
 					const response = utils.randomPick(content.responses)
-					let text = response.text || ''
-					let options = {}
-
-					const imageId = response.image
-					if (imageId) {
-						if (!isValidImageId(imageId)) {
-							msg.channel.send(
-								`どうにも無効な画像ID ${imageId} がレスポンスに含まれているようだロボ`
-								+ '\nインジェクションを試みてないかロボ? 絶対にやめるロボよ…')
-							console.log(`無効な画像ID ${imageId}`)
-							break
-						}
-						const path = this.images.getImagePathById(imageId)
-						try {
-							await fs.access(path)
-						} catch (_) {
-							msg.channel.send(`どうも使用できない画像 ${imageId} がレスポンスに含まれているようだロボ`)
-							break
-						}
-						const attachment = new Attachment(path)
-						options = { ...options, file: attachment }
-					}
-
-					text = utils.replaceEmoji(text, msg.guild.emojis)
-					if (response.reply !== undefined && !response.reply) {
-						msg.channel.send(text, options)
-					} else {
-						msg.reply(text, options)
-					}
+					await this._processPickedResponse(msg, response)
 					break
 				}
 			}
@@ -86,18 +104,21 @@ class CustomReply {
 }
 
 module.exports = class {
+	#gc
+
 	constructor(cmdname) {
 		this.cmdname = cmdname
 	}
 
-	async init() {
+	async init(gc) {
+		this.#gc = gc
 	}
 
 	async finalize() {
 	}
 
 	createChannelInstance(channel) {
-		const client = new CustomReply(this, channel)
+		const client = new CustomReply(this, channel, this.#gc)
 		client.init()
 		return client
 	}

@@ -13,7 +13,8 @@
     "@iarna/toml": "^2.2.3",
     "axios": "^0.19.1",
     "discord.js": "^11.5.1",
-    "dotenv": "^8.2.0"
+    "dotenv": "^8.2.0",
+    "lodash": "^4.17.15"
   },
   "devDependencies": {
     "eslint": "^6.8.0",

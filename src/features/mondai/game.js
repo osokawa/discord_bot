@@ -35,9 +35,13 @@ function normalizeAnswerMessage(message) {
 }
 
 module.exports = class {
-	constructor(channelInstance, mode, options) {
+	#gc
+
+	constructor(channelInstance, gc, mode, options) {
 		this.channelInstance = channelInstance
+		this.#gc = gc
 		this.feature = channelInstance.feature
+
 		this.mode = mode
 		this.options = options
 		this.answer = null
@@ -93,21 +97,24 @@ module.exports = class {
 
 		this.ready = true
 		const attachment = new Attachment(outputPath)
-		this.channelInstance.channel.send('問題ロボ。頑張るロボ!', attachment)
+		await this.#gc.sendToChannel(this.channelInstance.channel, 'mondai.sendMondaiImage', {}, { files: [attachment] })
 	}
 
 	async init() {
 		await this._postMondai()
 	}
 
-	async _postIncorrectLimitMessage(msg, ans, title) {
+	async _postResultMessage(msg, key, ans, title) {
+		const options = {}
 		if (this._isMosaicMode) {
-			const attachment = new Attachment(path.join(this.tmpDir, 'original.jpg'))
-			msg.channel.send(`:no_entry_sign: 間違えすぎロボよ… 正解は**${title}**で再生時間は${ans.time}ロボ\nでもモザイクだからしょうがないロボね`
-				+ '\nオリジナルの画像はこれだロボ', attachment)
-		} else {
-			msg.channel.send(`:no_entry_sign: 間違えすぎロボよ…正解は**${title}**で再生時間は${ans.time}ロボ\n出直してくるロボ!`)
+			options.files = [new Attachment(path.join(this.tmpDir, 'original.jpg'))]
 		}
+
+		await this.#gc.send(
+			msg,
+			'mondai.answer.' + key,
+			{ title, time: ans.time, mosaic: this._isMosaicMode },
+			options)
 	}
 
 	async _processAnswerMessage(msg) {
@@ -118,13 +125,7 @@ module.exports = class {
 		// 正解
 		const correctMatch = text.match(new RegExp(ans.pattern, 'i'))
 		if (correctMatch && correctMatch[0] === text) {
-			if (this._isMosaicMode) {
-				const attachment = new Attachment(path.join(this.tmpDir, 'original.jpg'))
-				msg.channel.send(`:ok_hand: 正解ロボ! **${title}** ちなみに再生時間は${ans.time}だロボよ`
-					+ '\nオリジナルの画像はこれロボ。よく頑張ったロボ!', attachment)
-			} else {
-				msg.channel.send(`:ok_hand: 正解ロボ! **${title}** ちなみに再生時間は${ans.time}だロボよ`)
-			}
+			await this._postResultMessage(msg, 'correct', ans, title)
 
 			if (this.options.repeat) {
 				this.correctCount++
@@ -139,17 +140,11 @@ module.exports = class {
 		if (text.match(new RegExp(this.feature.config.options.surrenderPattern, 'i'))) {
 			this.incorrectCount++
 			if (this.options.repeat && this.incorrectCount == this.incorrectLimit) {
-				await this._postIncorrectLimitMessage(msg, ans, title)
+				await this._postResultMessage(msg, 'reachedIncorrectLimit', ans, title)
 				return false
 			}
 
-			if (this._isMosaicMode) {
-				const attachment = new Attachment(path.join(this.tmpDir, 'original.jpg'))
-				msg.channel.send(`情けない子…ロボ! 正解は**${title}**で再生時間は${ans.time}ロボよ\nモザイクは難しいロボね`
-					+ '\nオリジナルの画像はこれだロボ', attachment)
-			} else {
-				msg.channel.send(`情けない子…ロボ! 正解は**${title}**で再生時間は${ans.time}ロボ\n出直すロボ!`)
-			}
+			await this._postResultMessage(msg, 'surrender', ans, title)
 
 			if (this.options.repeat) {
 				await this._postMondai()
@@ -165,11 +160,11 @@ module.exports = class {
 			if (incorrectMatch && incorrectMatch[0] === text) {
 				this.incorrectCount++
 				if (this.incorrectCount == this.incorrectLimit) {
-					await this._postIncorrectLimitMessage(msg, ans, title)
+					await this._postResultMessage(msg, 'reachedIncorrectLimit', ans, title)
 					return false
 				}
 
-				msg.channel.send(':no_entry_sign: 不正解。もうちょっと頑張るか降参するロボ')
+				await this.#gc.send(msg, 'mondai.answer.incorrect')
 				return true
 			}
 		}
@@ -188,21 +183,7 @@ module.exports = class {
 
 	async finalize() {
 		if (this.options.repeat) {
-			let comment = ''
-			if (this.correctCount === 0) {
-				comment = '0回とかありえないロボ… どうして始めたロボ?'
-			} else if (this.correctCount < 5) {
-				comment = 'もうちょっと頑張るロボ…'
-			} else if (this.correctCount < 10) {
-				comment = 'なかなかやるロボね'
-			} else if (this.correctCount < 20) {
-				comment = 'かなりすごいロボね!'
-			} else if (this.correctCount < 50) {
-				comment = '超スゴイロボ!!'
-			} else {
-				comment = '本当に人間ロボ? ロボットじゃないかロボ?!'
-			}
-			this.channelInstance.channel.send(`お疲れさまロボ。合計正解数は${this.correctCount}回ロボよ!\n${comment}`)
+			await this.#gc.sendToChannel(this.channelInstance.channel, 'mondai.repeatResult', { correctCount: this.correctCount })
 		}
 
 		await fs.rmdir(this.tmpDir, { recursive: true })

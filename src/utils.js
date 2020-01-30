@@ -1,3 +1,5 @@
+const lodash = require('lodash')
+
 exports.parseCommand = function (string) {
 	const found = string.match(/^!([a-zA-Z_-]+)(\s+?.+)?$/)
 	if (!found) {
@@ -105,8 +107,28 @@ exports.delay = function (ms) {
 	})
 }
 
+function weightedRandom(weights) {
+	if (!Array.isArray(weights) || weights.length == 0) {
+		throw new TypeError('invalid argument')
+	}
+
+	const list = weights.reduce((a, c) => [...a, a[a.length - 1] + c], [0])
+	const random = Math.floor(Math.random() * list[list.length - 1])
+	for (let i = 1; i < list.length; i++) {
+		if (list[i - 1] <= random && random < list[i]) {
+			return i - 1
+		}
+	}
+}
+exports.weightedRandom = weightedRandom
+
 exports.randomPick = function (array) {
-	return array[Math.floor(Math.random() * array.length)]
+	if (!Array.isArray(array)) {
+		return array
+	}
+
+	const weights = array.map(x => lodash.get(x, 'weight', 100))
+	return array[weightedRandom(weights)]
 }
 
 exports.subCommandProxy = async function (table, [subcommand, ...args], msg) {

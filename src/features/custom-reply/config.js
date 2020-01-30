@@ -13,8 +13,11 @@ function isValidId(id) {
 }
 
 module.exports = class {
-	constructor(channelInstance) {
+	#gc
+
+	constructor(channelInstance, gc) {
 		this.channelInstance = channelInstance
+		this.#gc = gc
 		this.config = new Map()
 		this.configSources = new Map()
 	}
@@ -68,23 +71,23 @@ module.exports = class {
 				this._updateConfig(id)
 			} catch (e) {
 				console.error(e)
-				msg.channel.send(`id: ${id} のリロード中にエラーが発生したロボ…`)
+				await this.#gc.send(msg, 'customReply.config.errorOnReloading', { id })
 				continue
 			}
 		}
-		msg.channel.send('customReply のローカル設定をリロードしたロボ!')
+		await this.#gc.send(msg, 'customReply.config.localReloadingComplete')
 	}
 
 	async _processReloadCommand(args, msg) {
 		if (args.length < 1) {
-			msg.channel.send('ID を指定して欲しいだなも')
+			await this.#gc.send(msg, 'customReply.config.haveToSpecifyId')
 			return
 		}
 
 		const id = args[0]
 
 		if (!this.configSources.has(id)) {
-			msg.channel.send('そんな ID は存在しないんだなも!')
+			await this.#gc.send(msg, 'customReply.config.idThatDoesNotExist')
 			return
 		}
 
@@ -92,11 +95,11 @@ module.exports = class {
 			await this._updateConfig(id, true)
 		} catch (e) {
 			console.error(e)
-			msg.channel.send(`id: ${id} のリロード中にエラーが発生したロボ…`)
+			await this.#gc.send(msg, 'customReply.config.errorOnReloading', { id })
 			return
 		}
 
-		msg.channel.send(`id: ${id} の customReply の設定をリロードしたロボ!`)
+		await this.#gc.send(msg, 'customReply.config.reloadingComplete', { id })
 	}
 
 	async writeSourcesJson() {
@@ -107,19 +110,19 @@ module.exports = class {
 
 	async addCommand(args, msg) {
 		if (args.length < 2) {
-			msg.channel.send('ID と URL をして欲しいだなも')
+			await this.#gc.send(msg, 'customReply.config.haveToSpecifyIdAndUrl')
 			return
 		}
 
 		const [id, url] = args
 
 		if (!isValidId(id)) {
-			msg.channel.send('まともな ID をして欲しいだなも')
+			await this.#gc.send(msg, 'customReply.config.haveToSpecifyValidId')
 			return
 		}
 
 		if (!utils.isValidUrl(url)) {
-			msg.channel.send('まともな URL をして欲しいだなも')
+			await this.#gc.send(msg, 'customReply.config.haveToSpecifyValidUrl')
 			return
 		}
 
@@ -127,24 +130,25 @@ module.exports = class {
 		await this._updateConfig(id, true)
 		await this.writeSourcesJson()
 
-		msg.channel.send(`id: ${id} の設定を追加したロボ! メンテナンス頑張ってロボ!`)
+		await this.#gc.send(msg, 'customReply.config.addingComplete', { id })
 	}
 
 	async listCommand(args, msg) {
-		msg.channel.send('登録されているソース一覧ロボ\n'
-			+ [...this.configSources].map(([k, v]) => `${k}: ${v.source}`).join('\n'))
+		await this.#gc.send(msg, 'customReply.config.list', {
+			sources: [...this.configSources].map(([k, v]) => `${k}: ${v.source}`).join('\n')
+		})
 	}
 
 	async removeCommand(args, msg) {
 		if (args.length < 1) {
-			msg.channel.send('ID を指定して欲しいだなも')
+			await this.#gc.send(msg, 'customReply.config.haveToSpecifyId')
 			return
 		}
 
 		const id = args[0]
 
 		if (!this.configSources.has(id)) {
-			msg.channel.send('そんな ID は存在しないんだなも!')
+			await this.#gc.send(msg, 'customReply.config.idThatDoesNotExist')
 			return
 		}
 
@@ -152,7 +156,7 @@ module.exports = class {
 		this.configSources.delete(id)
 		await this.writeSourcesJson()
 
-		msg.channel.send(`id: ${id} のソースを削除したロボ。いままでお疲れさまロボ。`)
+		await this.#gc.send(msg, 'customReply.config.removingComplete', { id })
 	}
 
 	async command(args, msg) {

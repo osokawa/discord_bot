@@ -4,9 +4,12 @@ const TOML = require('@iarna/toml')
 const Game = require('./game.js')
 
 class Mondai {
-	constructor(feature, channel) {
+	#gc
+
+	constructor(feature, channel, gc) {
 		this.feature = feature
 		this.channel = channel
+		this.#gc = gc
 		this.game = null
 	}
 
@@ -15,7 +18,7 @@ class Mondai {
 		try {
 			({ args, options } = utils.parseCommandArgs(rawArgs))
 		} catch (e) {
-			msg.channel.send(`変なコマンドを指定していないかロボ?: ${e}`)
+			await this.#gc.send(msg, 'mondai.invalidCommand', { e })
 			return
 		}
 
@@ -26,7 +29,7 @@ class Mondai {
 				return
 			}
 
-			msg.channel.send(`前回の問題がまだ進行中みたいロボ: !${this.feature.cmdname} stop で強制終了ロボ`)
+			await this.#gc.send(msg, 'mondai.lastCommandIsStillInProgress', { cmdname: this.feature.cmdname })
 			return
 		}
 
@@ -39,13 +42,13 @@ class Mondai {
 			if (validModes.includes(args[0])) {
 				mode = args[0]
 			} else {
-				msg.channel.send('知らないモードロボねぇ…')
+				await this.#gc.send('mondai.invalidCommandMode')
 				return
 			}
 		}
 
 		try {
-			this.game = new Game(this, mode, {
+			this.game = new Game(this, this.#gc, mode, {
 				repeat: utils.getOption(options, ['repeat', 'r'])
 			})
 			await this.game.init(msg)
@@ -82,13 +85,17 @@ class Mondai {
 }
 
 module.exports = class {
+	#gc
+
 	constructor(cmdname, configPath) {
 		this.cmdname = cmdname
 		this.configPath = configPath
 		this.config = null
 	}
 
-	async init() {
+	async init(gc) {
+		this.#gc = gc
+
 		const toml = await fs.readFile(this.configPath, 'utf-8')
 		const parsed = await TOML.parse.async(toml)
 		this.config = parsed
@@ -98,6 +105,6 @@ module.exports = class {
 	}
 
 	createChannelInstance(channel) {
-		return new Mondai(this, channel)
+		return new Mondai(this, channel, this.#gc)
 	}
 }

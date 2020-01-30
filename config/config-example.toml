@@ -1,0 +1,77 @@
+[message.mondai]
+invalidCommand = '変なコマンドを指定していないかロボ?: <%= e %>'
+invalidCommandMode = '知らないモードロボねぇ…'
+lastCommandIsStillInProgress = '前回の問題がまだ進行中みたいロボ! `!<%= cmdname %> stop` で強制終了ロボ!'
+sendMondaiImage = '問題ロボ! 頑張ってロボ!'
+
+repeatResult = '''
+お疲れさまロボ。合計正解数は<%= correctCount %>回ロボよ!
+<% if (correctCount === 0) {
+%>0回とかありえないロボ… どうして始めたロボ?<%
+} else if (correctCount < 5) {
+%>もうちょっと頑張るロボ…<%
+} else if (correctCount < 10) {
+%>なかなかやるロボね<%
+} else if (correctCount < 20) {
+%>かなりスゴイロボね!<%
+} else if (correctCount < 50) {
+%>超スゴイロボ!<%
+} else if (correctCount < 100) {
+%>本当に人間ロボ? ロボットじゃないかロボ?!<%
+} else {
+%>へ、変態ロボ! 正解率98%以上を誇る変態ロボ! 怖いロボ…<% } %>'''
+
+[message.mondai.answer]
+reachedIncorrectLimit = '''
+:no_entry_sign: 間違えすぎロボよ… 正解は**<%= title %>**で再生時間は<%= time %>ロボ
+<% if (mosaic) {
+%>でもモザイクだからしょうがないロボね
+オリジナルの画像はこれだロボ<%
+} else {
+%>出直して来るロボ!<% } %>'''
+
+surrender = '''
+情けない子…ロボ! 正解は**<%= title %>**で再生時間は<%= time %>ロボよ
+<% if (mosaic) {
+%>モザイクは難しいロボね
+オリジナルの画像はこれだロボ<%
+} else {
+%>出直すロボ!<% } %>'''
+
+correct = '''
+:ok_hand: 正解ロボ! **<%= title %>** ちなみに再生時間は<%= time %>だロボよ<%
+if (mosaic) { %>オリジナルの画像はこれロボ。よく頑張ったロボ!<% } %>'''
+
+incorrect = ':no_entry_sign: 不正解。もうちょっと頑張るか降参するロボ'
+
+[message.customReply]
+invalidImageIdInResponse = '''
+どうにも無効な画像ID <%= imageId %> がレスポンスに含まれているようだロボ
+インジェクションを試みてないかロボ? 絶対にやめるロボよ…'''
+
+imageIdThatDoesNotExist = 'どうも使用できない画像 <%= imageId %> がレスポンスに含まれているようだロボ'
+gachaImageNotFound = 'ガチャに使用できる画像が一つもないロボ'
+
+[message.customReply.config]
+errorOnReloading = 'ID: <%= id %> のリロード中にエラーが発生したロボ…'
+localReloadingComplete = 'customReply のローカル設定をリロードしたロボ!'
+reloadingComplete = 'ID: <%= id %> の設定をリロードしたロボ!'
+addingComplete = 'ID: <%= id %> の設定を追加したロボ! メンテナンス頑張ってロボ!'
+removingComplete = 'ID: <%= id %> の設定を削除したロボ。いままでお疲れさまロボ。'
+haveToSpecifyId = 'ID を指定して欲しいだなも'
+haveToSpecifyValidId = 'まともな ID を指定して欲しいだなも'
+haveToSpecifyValidUrl = 'まともな URL を指定して欲しいだなも'
+haveToSpecifyIdAndUrl = 'ID と URL を指定して欲しいだなも'
+idThatDoesNotExist = 'そんな ID は存在しないんだなも!'
+list = "登録されている設定一覧ロボ:\n<%= sources %>"
+
+[message.customReply.images]
+haveToSpecifyId = 'ID を指定して欲しいだロボ'
+haveToSpecifyValidId = "まともな ID を指定して欲しいだなも"
+haveToSpecifyValidIdAndSorry = "マトモな ID を指定して欲しいロボ。申し訳ないロボ…\nあと拡張子は必須ロボよ"
+uploadingImageCancel = '画像のアップロードをキャンセルしたロボ'
+readyToUpload = '画像を送信するロボ'
+uploadingComplete = '画像のアップロードが完了したロボよー'
+list = "これが画像リストロボよー:\n<%= images %>"
+removingFailed = '画像の削除に失敗したロボ。そもそも存在しないidを指定していないかロボ?'
+removingComplete = '画像を削除したロボ!'
