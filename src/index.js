@@ -5,7 +5,7 @@ const features = require('../config/features.js')
 const GlobalConfig = require('./global-config.js')
 
 let isFeaturesReady = false
-const gc = new GlobalConfig('./config/config.toml')
+const gc = new GlobalConfig(['./config/config-default.toml', './config/config.toml'])
 
 client.on('ready', async () => {
 	console.log(`Logged in as ${client.user.tag}!`)

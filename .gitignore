@@ -1,7 +1,7 @@
 assets/
 config/*
 !config/features-example.js
-!config/config-example.toml
+!config/config-default.toml
 
 # Logs
 logs
