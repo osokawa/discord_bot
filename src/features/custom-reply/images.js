@@ -76,7 +76,7 @@ exports.Images = class {
 		const pageNumber = parseInt(args[0], 10) || 1
 
 		// 1ページあたり何枚の画像を表示させるか
-		const imagesPerPage = 5
+		const imagesPerPage = 20
 		const maxPage = Math.ceil(images.length / imagesPerPage)
 
 		if (pageNumber < 1 || maxPage < pageNumber) {
