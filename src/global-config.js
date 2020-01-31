@@ -25,7 +25,7 @@ module.exports = class {
 	async sendToChannel(channel, key, args = {}, options = {}) {
 		let template = lodash.get(this.#config.message, key)
 		if (template === undefined) {
-			throw new Error('undefined key')
+			template = key
 		}
 
 		template = utils.randomPick(template)
