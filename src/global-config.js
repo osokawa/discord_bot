@@ -4,18 +4,20 @@ const TOML = require('@iarna/toml')
 const lodash = require('lodash')
 
 module.exports = class {
-	#path
-	#config
+	#paths
+	#config = {}
 	#templateCache = new Map()
 
-	constructor(path) {
-		this.#path = path
+	constructor(paths) {
+		this.#paths = paths
 	}
 
 	async init() {
-		const toml = await fs.readFile(this.#path, 'utf-8')
-		const parsed = await TOML.parse.async(toml)
-		this.#config = parsed
+		for (const path of this.#paths) {
+			const toml = await fs.readFile(path, 'utf-8')
+			const parsed = await TOML.parse.async(toml)
+			this.#config = lodash.merge(this.#config, parsed)
+		}
 	}
 
 	async send(msg, key, args = {}, options = {}) {
@@ -25,7 +27,7 @@ module.exports = class {
 	async sendToChannel(channel, key, args = {}, options = {}) {
 		let template = lodash.get(this.#config.message, key)
 		if (template === undefined) {
-			throw new Error('undefined key')
+			template = key
 		}
 
 		template = utils.randomPick(template)

@@ -18,6 +18,7 @@ class CustomReply {
 
 	async init() {
 		await this.config.init()
+		await this.images.init()
 		this.initialized = true
 	}
 
@@ -26,7 +27,7 @@ class CustomReply {
 		let options = {}
 
 		if (response.action === 'gacha') {
-			let list = await fs.readdir(`./config/custom-reply/${this.channel.id}/images/`)
+			let list = this.images.images
 			if (response.pattern) {
 				list = list.filter(x => x.match(new RegExp(response.pattern)))
 			}
