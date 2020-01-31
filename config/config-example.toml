@@ -69,9 +69,14 @@ list = "登録されている設定一覧ロボ:\n<%= sources %>"
 haveToSpecifyId = 'ID を指定して欲しいだロボ'
 haveToSpecifyValidId = "まともな ID を指定して欲しいだなも"
 haveToSpecifyValidIdAndSorry = "マトモな ID を指定して欲しいロボ。申し訳ないロボ…\nあと拡張子は必須ロボよ"
+imageIdThatDoesNotExist = 'そんな ID は存在しないんだなも!'
 uploadingImageCancel = '画像のアップロードをキャンセルしたロボ'
 readyToUpload = '画像を送信するロボ'
 uploadingComplete = '画像のアップロードが完了したロボよー'
-list = "これが画像リストロボよー:\n<%= images %>"
-removingFailed = '画像の削除に失敗したロボ。そもそも存在しないidを指定していないかロボ?'
+list = "これが画像リストロボよー (<%= currentPage %>/<%= maxPage %>):\n<%= images %>"
+listInvalidCommand = '変なコマンドを指定していないかロボ?: <%= e %>'
+listImageNotFound = '画像が一つもないロボ'
+invalidPageId = '無効なページ番号ロボ。最大ページ数は<%= maxPage %>ロボよ'
 removingComplete = '画像を削除したロボ!'
+sendPreview = 'これがその画像ロボ!'
+localReloadingComplete = 'ローカルにある画像を再読込したロボ!'
