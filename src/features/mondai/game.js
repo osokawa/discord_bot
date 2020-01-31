@@ -4,6 +4,7 @@ const os = require('os')
 const fs = require('fs').promises
 const path = require('path')
 const utils = require('../../utils.js')
+const { generateImageMap } = require('./image-map.js')
 
 function generateMondaiImage(mode, inPath, outPath, opts = {}) {
 	const optArgs = []
@@ -36,6 +37,7 @@ function normalizeAnswerMessage(message) {
 
 module.exports = class {
 	#gc
+	#incorrectImageLog = []
 
 	constructor(channelInstance, gc, mode, options) {
 		this.channelInstance = channelInstance
@@ -48,6 +50,9 @@ module.exports = class {
 		this.incorrectCount = 0
 		this.correctCount = 0
 		this.incorrectLimit = 3
+		if (options.hasOwnProperty('life')) {
+			this.incorrectLimit = options.life
+		}
 		this.ready = false
 	}
 
@@ -60,20 +65,14 @@ module.exports = class {
 		return this.mode === 'mosaic'
 	}
 
+	_getTmpPath(filename) {
+		return path.join(this.tmpDir, filename)
+	}
+
 	async _postMondai() {
 		this.ready = false
-
 		const episode = utils.randomPick(this.feature.config.episodes)
-		this.tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mondai-'))
-
-		let outputPath
-
-		if (this._isAudioMode) {
-			outputPath = path.join(this.tmpDir, 'audio.mp3')
-		} else {
-			outputPath = path.join(this.tmpDir, 'image.jpg')
-		}
-
+		const outputPath = this._getTmpPath(this._isAudioMode ? 'audio.mp3' : 'image.jpg')
 		const mosaicOriginalPath = path.join(this.tmpDir, 'original.jpg')
 		const options = {}
 		if (this._isMosaicMode) {
@@ -101,13 +100,14 @@ module.exports = class {
 	}
 
 	async init() {
+		this.tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mondai-'))
 		await this._postMondai()
 	}
 
 	async _postResultMessage(msg, key, ans, title) {
 		const options = {}
 		if (this._isMosaicMode) {
-			options.files = [new Attachment(path.join(this.tmpDir, 'original.jpg'))]
+			options.files = [new Attachment(this._getTmpPath('original.jpg'))]
 		}
 
 		await this.#gc.send(
@@ -115,6 +115,14 @@ module.exports = class {
 			'mondai.answer.' + key,
 			{ title, time: ans.time, mosaic: this._isMosaicMode },
 			options)
+	}
+
+	async _pushIncorrectImageLog() {
+		if (!this._isAudioMode && this.options.repeat) {
+			const filename = this._getTmpPath(`incorrect${this.incorrectCount}.jpg`)
+			await fs.copyFile(this._getTmpPath('image.jpg'), filename)
+			this.#incorrectImageLog.push({ filename, answer: this.answer })
+		}
 	}
 
 	async _processAnswerMessage(msg) {
@@ -139,6 +147,8 @@ module.exports = class {
 		// 降参
 		if (text.match(new RegExp(this.feature.config.options.surrenderPattern, 'i'))) {
 			this.incorrectCount++
+			this._pushIncorrectImageLog()
+
 			if (this.options.repeat && this.incorrectCount == this.incorrectLimit) {
 				await this._postResultMessage(msg, 'reachedIncorrectLimit', ans, title)
 				return false
@@ -159,12 +169,15 @@ module.exports = class {
 			const incorrectMatch = text.match(new RegExp(episode.pattern, 'i'))
 			if (incorrectMatch && incorrectMatch[0] === text) {
 				this.incorrectCount++
+
 				if (this.incorrectCount == this.incorrectLimit) {
+					this._pushIncorrectImageLog()
 					await this._postResultMessage(msg, 'reachedIncorrectLimit', ans, title)
 					return false
 				}
 
 				await this.#gc.send(msg, 'mondai.answer.incorrect')
+
 				return true
 			}
 		}
@@ -184,6 +197,14 @@ module.exports = class {
 	async finalize() {
 		if (this.options.repeat) {
 			await this.#gc.sendToChannel(this.channelInstance.channel, 'mondai.repeatResult', { correctCount: this.correctCount })
+			if (!this._isAudioMode && 10 <= this.correctCount) {
+				const buf = await generateImageMap(1920, 1080, this.#incorrectImageLog.map(x => x.filename))
+				await this.#gc.sendToChannel(
+					this.channelInstance.channel,
+					'mondai.incorrectImageMap',
+					{ answers: this.#incorrectImageLog.map(x => x.answer) },
+					{ files: [new Attachment(buf, 'image.jpg')] })
+			}
 		}
 
 		await fs.rmdir(this.tmpDir, { recursive: true })

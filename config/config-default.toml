@@ -21,6 +21,12 @@ repeatResult = '''
 } else {
 %>へ、変態ロボ! 正解率98%以上を誇る変態ロボ! 怖いロボ…<% } %>'''
 
+incorrectImageMap = '''
+間違えた問題は左上から右、下の順にこれロボ:
+<% for (const a of answers) {
+%><%= a.title %>
+<% } %>'''
+
 [message.mondai.answer]
 reachedIncorrectLimit = '''
 :no_entry_sign: 間違えすぎロボよ… 正解は**<%= title %>**で再生時間は<%= time %>ロボ

@@ -16,7 +16,7 @@ class Mondai {
 	async _processMondaiCommand(rawArgs, msg) {
 		let args, options
 		try {
-			({ args, options } = utils.parseCommandArgs(rawArgs))
+			({ args, options } = utils.parseCommandArgs(rawArgs, ['life', 'l']))
 		} catch (e) {
 			await this.#gc.send(msg, 'mondai.invalidCommand', { e })
 			return
@@ -48,9 +48,17 @@ class Mondai {
 		}
 
 		try {
-			this.game = new Game(this, this.#gc, mode, {
+			const opts = {
 				repeat: utils.getOption(options, ['repeat', 'r'])
-			})
+			}
+
+			const life = utils.getOption(options, ['life', 'l'], null)
+			if (life) {
+				opts.repeat = true
+				opts.life = parseInt(life, 10)
+			}
+
+			this.game = new Game(this, this.#gc, mode, opts)
 			await this.game.init(msg)
 		} catch (e) {
 			this.game = null
