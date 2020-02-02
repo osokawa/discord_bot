@@ -42,7 +42,7 @@ class Mondai {
 			if (validModes.includes(args[0])) {
 				mode = args[0]
 			} else {
-				await this.#gc.send('mondai.invalidCommandMode')
+				await this.#gc.send(msg, 'mondai.invalidCommandMode')
 				return
 			}
 		}
