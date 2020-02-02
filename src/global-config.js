@@ -39,7 +39,7 @@ module.exports = class {
 			this.#templateCache.set(template.text, lodash.template(template.text))
 		}
 		const compiledTemplate = this.#templateCache.get(template.text)
-
-		return await channel.send(compiledTemplate(args), options)
+		const text = utils.replaceEmoji(compiledTemplate(args), channel.guild.emojis)
+		return await channel.send(text, options)
 	}
 }
