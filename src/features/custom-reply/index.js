@@ -23,6 +23,10 @@ class CustomReply {
 	}
 
 	async _processPickedResponse(msg, response) {
+		if (response.action === 'do-nothing') {
+			return
+		}
+
 		let text = response.text || ''
 		let options = {}
 
