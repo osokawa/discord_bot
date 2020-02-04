@@ -13,6 +13,14 @@ class Mondai {
 		this.game = null
 	}
 
+	async _finalizeGame() {
+		try {
+			await this.game.finalize()
+		} finally {
+			this.game = null
+		}
+	}
+
 	async _processMondaiCommand(rawArgs, msg) {
 		let args, options
 		try {
@@ -24,8 +32,7 @@ class Mondai {
 
 		if (this.game !== null) {
 			if (args.length === 1 && args[0] === 'stop') {
-				await this.game.finalize()
-				this.game = null
+				await this._finalizeGame()
 				return
 			}
 
@@ -85,8 +92,7 @@ class Mondai {
 			}
 
 			if (!res) {
-				await this.game.finalize()
-				this.game = null
+				await this._finalizeGame()
 			}
 		}
 	}
