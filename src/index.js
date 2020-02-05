@@ -1,69 +1,36 @@
 const { Client } = require('discord.js')
 const client = new Client()
 
+const FeatureManager = require('./features/feature-manager.js')
 const features = require('../config/features.js')
-const GlobalConfig = require('./global-config.js')
 
-let isFeaturesReady = false
-const gc = new GlobalConfig(['./config/config-default.toml', './config/config.toml'])
+const featureManager = new FeatureManager()
+
+let ready = false
 
 client.on('ready', async () => {
 	console.log(`Logged in as ${client.user.tag}!`)
 
-	try {
-		await gc.init()
-	} catch (e) {
-		console.error(e)
-		process.exit(1)
+	await featureManager.init()
+
+	for (const [k, v] of features) {
+		await featureManager.registerFeature(k, v)
 	}
 
-	for (const [, v] of features) {
-		try {
-			await v.init(gc, client)
-		} catch (e) {
-			console.error(e)
-			process.exit(1)
-		}
-		isFeaturesReady = true
-	}
+	ready = true
 })
 
-const channelData = new Map()
-
 client.on('message', async (msg) => {
-	if (!isFeaturesReady) {
+	if (!ready) {
 		return
 	}
 
-	const channelId = msg.channel.id
-	if (!channelData.has(channelId)) {
-		const channelInstances = new Map()
-		channelData.set(channelId, channelInstances)
-		for (const [k, v] of features) {
-			const instance = v.createChannelInstance(msg.channel, msg.guild)
-			channelInstances.set(k, { instance })
-		}
-	}
-	const channelInstances = channelData.get(channelId)
-	await Promise.all(Array.from(channelInstances.values(), async (x) => {
-		try {
-			await x.instance.onMessage(msg)
-		} catch (e) {
-			console.error(e)
-			msg.channel.send('bot の処理中にエラーが発生しました。')
-		}
-	}))
+	featureManager.onMessage(msg)
 })
 
 process.on('SIGINT', async () => {
 	client.destroy()
-	for (const [, v] of features) {
-		try {
-			await v.finalize()
-		} catch (e) {
-			console.error(e)
-		}
-	}
+	await featureManager.finalize()
 	console.log('discord bot was shut down.')
 })
 
