@@ -1,9 +1,23 @@
 const utils = require('../utils.js')
+const GlobalConfig = require('../global-config.js')
 
 module.exports = class {
 	#features = new Map()
+	#gc = null
 
-	await registerFeature(id, feature) {
+	constructor() {
+		this.#gc = new GlobalConfig(['./config/config-default.toml', './config/config.toml'])
+	}
+
+	async init() {
+		await gc.init()
+	}
+
+	async finalize() {
+		await this._eachAsync(x => x.finalize())
+	}
+
+	async registerFeature(id, feature) {
 		this.#features.set(id, feature)
 		await feature.init(this)
 	}
@@ -25,11 +39,11 @@ module.exports = class {
 	}
 
 	async command(msg, name, args) {
-		this._eachAsync(x => x.onCommand(msg, name, args))
+		await this._eachAsync(x => x.onCommand(msg, name, args))
 	}
 
 	async message(msg) {
-		this._eachAsync(x => x.onMessage(msg))
+		await this._eachAsync(x => x.onMessage(msg))
 	}
 
 	// discord.js の message イベントからのみ呼ばれることを想定
