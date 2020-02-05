@@ -65,16 +65,22 @@ class Feature {
 		return map.values().map(x => x.values()).flat()
 	}
 
-	async dispatchToCommands(doWithInstance) {
-		await Promise.all(this.#commands.map(instance => {
+	async _eachAsyncOf(arr, doWithX) {
+		const errors = []
+
+		await Promise.all(arr.map(x => {
 			return async () => {
 				try {
-					await doWithInstance(instance)
+					await doWithX(x)
 				} catch (e) {
-					console.error(e)
+					errors.push(e)
 				}
 			}
 		}))
+
+		if (errors.length !== 0) {
+			throw errors
+		}
 	}
 
 	async dispatchToChannels(channel, doWithInstance) {
@@ -83,16 +89,24 @@ class Feature {
 			this.#channelInstances,
 			x => x.createInstance(channel))
 
-		await Promise.all(channelInstances.map(instance => {
-			return async () => {
-				try {
-					await doWithInstance(instance)
-				} catch (e) {
-					console.error(e)
-					channel.send('bot の処理中にエラーが発生しました。')
-				}
-			}
-		}))
+		await this._eachAsyncOf(channelInstances, doWithInstance)
+	}
+
+	async dispatchToGuilds(guild, doWithInstance) {
+		if (!guild) {
+			return
+		}
+
+		const channelInstances = this._dispatchBase(
+			this.#guilds,
+			this.#guildInstances,
+			x => x.createInstance(guild))
+
+		await this._eachAsyncOf(channelInstances, doWithInstance)
+	}
+
+	async dispatchToCommands(doWithInstance) {
+		await this._eachAsyncOf(this.#commands, doWithInstance)
 	}
 
 	async onCommand(msg, name, args) {
@@ -100,8 +114,8 @@ class Feature {
 	}
 
 	async onMessage(msg) {
-		await this.dispatchToChannels(x => x.onMessage(msg))
-		await _processGuild()
+		await this.dispatchToChannels(msg.channel, x => x.onMessage(msg))
+		await this.dispatchToGuilds(msg.guild, x => x.onMessage(msg))
 	}
 
 	hasInitialized() {
