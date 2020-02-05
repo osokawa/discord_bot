@@ -76,7 +76,6 @@ class CustomReply {
 				if (msg.content.match(new RegExp(content.target))) {
 					const response = utils.randomPick(content.responses)
 					await this._processPickedResponse(msg, response)
-					break
 				}
 			}
 		}
