@@ -53,7 +53,7 @@ module.exports = class {
 		if (options.hasOwnProperty('life')) {
 			this.incorrectLimit = options.life
 		}
-		this.ready = false
+		this.processing = false
 	}
 
 	get _isAudioMode() {
@@ -70,7 +70,6 @@ module.exports = class {
 	}
 
 	async _postMondai() {
-		this.ready = false
 		const episode = utils.randomPick(this.feature.config.episodes)
 		const outputPath = this._getTmpPath(this._isAudioMode ? 'audio.mp3' : 'image.jpg')
 		const mosaicOriginalPath = path.join(this.tmpDir, 'original.jpg')
@@ -94,14 +93,15 @@ module.exports = class {
 			throw e
 		}
 
-		this.ready = true
 		const attachment = new Attachment(outputPath)
 		await this.#gc.sendToChannel(this.channelInstance.channel, 'mondai.sendMondaiImage', {}, { files: [attachment] })
 	}
 
 	async init() {
 		this.tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mondai-'))
+		this.processing = true
 		await this._postMondai()
+		this.processing = false
 	}
 
 	async _postResultMessage(msg, key, ans, title) {
@@ -187,11 +187,14 @@ module.exports = class {
 
 	// true なら続行
 	async onMessage(msg) {
-		if (msg.author.bot || !this.ready) {
+		if (msg.author.bot || this.processing) {
 			return true
 		}
 
-		return await this._processAnswerMessage(msg)
+		this.processing = true
+		const res = await this._processAnswerMessage(msg)
+		this.processing = false
+		return res
 	}
 
 	async finalize() {

@@ -14,11 +14,10 @@ class Mondai {
 	}
 
 	async _finalizeGame() {
-		try {
-			await this.game.finalize()
-		} finally {
-			this.game = null
-		}
+		// 2回以上 Game.finalize() が呼ばれないようにする
+		const instance = this.game
+		this.game = null
+		await instance.finalize()
 	}
 
 	async _processMondaiCommand(rawArgs, msg) {
