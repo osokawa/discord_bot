@@ -50,7 +50,7 @@ class Feature {
 		return this.#channels
 	}
 
-	async _dispatchBase(arr, map, id, createInstance) {
+	_dispatchBase(arr, map, id, createInstance) {
 		arr.forEach((elm, idx) => {
 			if (!map.has(id)) {
 				map.set(id, new Map())
@@ -62,20 +62,20 @@ class Feature {
 			}
 		})
 
-		return map.values().map(x => x.values()).flat()
+		return Array.from(map.values(), x => Array.from(x.values())).flat()
 	}
 
 	async _eachAsyncOf(arr, doWithX) {
 		const errors = []
 
 		await Promise.all(arr.map(x => {
-			return async () => {
+			return (async () => {
 				try {
 					await doWithX(x)
 				} catch (e) {
 					errors.push(e)
 				}
-			}
+			})()
 		}))
 
 		if (errors.length !== 0) {
@@ -87,6 +87,7 @@ class Feature {
 		const channelInstances = this._dispatchBase(
 			this.#channels,
 			this.#channelInstances,
+			channel.id,
 			x => x.createChannelInstance(channel))
 
 		await this._eachAsyncOf(channelInstances, doWithInstance)
@@ -100,6 +101,7 @@ class Feature {
 		const channelInstances = this._dispatchBase(
 			this.#guilds,
 			this.#guildInstances,
+			guild.id,
 			x => x.createGuildInstance(guild))
 
 		await this._eachAsyncOf(channelInstances, doWithInstance)
@@ -129,7 +131,7 @@ class Feature {
 	// オーバライドしないで
 	async init(manager) {
 		this.manager = manager
-		await initImpl()
+		await this.initImpl()
 		this.hasInitialized = true
 	}
 

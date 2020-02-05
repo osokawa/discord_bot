@@ -19,9 +19,6 @@ class SimpleReply {
 }
 
 module.exports = class extends Feature {
-	constructor() {
-	}
-
 	async initImpl() {
 		this.registerChannel(this)
 	}

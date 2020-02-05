@@ -2,7 +2,7 @@ const fs = require('fs').promises
 const utils = require('../../utils.js')
 const TOML = require('@iarna/toml')
 const Game = require('./game.js')
-const Feature = require('../feature.js')
+const { Feature } = require('../feature.js')
 
 class Mondai {
 	#gc
@@ -99,6 +99,7 @@ module.exports = class extends Feature {
 	#gc
 
 	constructor(cmdname, configPath) {
+		super()
 		this.cmdname = cmdname
 		this.configPath = configPath
 		this.config = null
@@ -116,7 +117,7 @@ module.exports = class extends Feature {
 	}
 
 	async onCommand(msg, name, args) {
-		await this.dispatchToChannels(x => x.onCommand(msg, name, args))
+		await this.dispatchToChannels(msg.channel, x => x.onCommand(msg, name, args))
 	}
 
 	createChannelInstance(channel) {

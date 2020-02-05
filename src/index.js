@@ -14,13 +14,11 @@ client.on('ready', async () => {
 	await featureManager.init()
 
 	for (const [k, v] of features) {
-		await registerFeature(k, v)
+		await featureManager.registerFeature(k, v)
 	}
 
 	ready = true
 })
-
-const channelData = new Map()
 
 client.on('message', async (msg) => {
 	if (!ready) {

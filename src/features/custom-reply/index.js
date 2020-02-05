@@ -3,7 +3,7 @@ const utils = require('../../utils.js')
 const fs = require('fs').promises
 const { Images, isValidImageId } = require('./images.js')
 const Config = require('./config.js')
-const Feature = require('../feature.js')
+const { Feature } = require('../feature.js')
 
 class CustomReply {
 	#gc
@@ -108,10 +108,11 @@ class CustomReply {
 	}
 }
 
-module.exports = class {
+module.exports = class extends Feature {
 	#gc
 
 	constructor(cmdname) {
+		super()
 		this.cmdname = cmdname
 	}
 
@@ -123,7 +124,7 @@ module.exports = class {
 	}
 
 	async onCommand(msg, name, args) {
-		await this.dispatchToChannels(x => x.onCommand(msg, name, args))
+		await this.dispatchToChannels(msg.channel, x => x.onCommand(msg, name, args))
 	}
 
 	createChannelInstance(channel) {

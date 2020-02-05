@@ -14,7 +14,7 @@ module.exports = class {
 	}
 
 	async init() {
-		await gc.init()
+		await this.#gc.init()
 	}
 
 	async finalize() {
@@ -27,18 +27,18 @@ module.exports = class {
 	}
 
 	async _eachAsync(cb) {
-		await Promise.all(this.#features.values().map(feature => {
-			if (!instance.hasInitialized) {
-				return
-			}
+		await Promise.all(Array.from(this.#features.values(), feature => {
+			return (async () => {
+				if (!feature.hasInitialized) {
+					return
+				}
 
-			return async () => {
 				try {
-					await cb(instance)
+					await cb(feature)
 				} catch (e) {
 					console.error(e)
 				}
-			}
+			})()
 		}))
 	}
 
@@ -56,12 +56,12 @@ module.exports = class {
 			return
 		}
 
-		if (msg.startsWith('!')) {
-			const { name, args } = utils.parseCommand(msg)
-			await command(msg, name, args)
+		if (msg.content.startsWith('!')) {
+			const { commandName, args } = utils.parseCommand(msg.content)
+			await this.command(msg, commandName, args)
 			return
 		}
 
-		await message(msg)
+		await this.message(msg)
 	}
 }
