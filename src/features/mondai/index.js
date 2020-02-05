@@ -2,6 +2,7 @@ const fs = require('fs').promises
 const utils = require('../../utils.js')
 const TOML = require('@iarna/toml')
 const Game = require('./game.js')
+const Feature = require('../feature.js')
 
 class Mondai {
 	#gc
@@ -21,7 +22,11 @@ class Mondai {
 		}
 	}
 
-	async _processMondaiCommand(rawArgs, msg) {
+	async onCommand(msg, name, rawArgs) {
+		if (name !== this.feature.cmdname) {
+			return
+		}
+
 		let args, options
 		try {
 			({ args, options } = utils.parseCommandArgs(rawArgs, ['life', 'l']))
@@ -74,14 +79,6 @@ class Mondai {
 	}
 
 	async onMessage(msg) {
-		if (!msg.author.bot) {
-			const command = utils.parseCommand(msg.content)
-			if (command && command.commandName === this.feature.cmdname) {
-				await this._processMondaiCommand(command.args, msg)
-				return
-			}
-		}
-
 		if (this.game !== null) {
 			let res
 			try {
@@ -98,7 +95,7 @@ class Mondai {
 	}
 }
 
-module.exports = class {
+module.exports = class extends Feature {
 	#gc
 
 	constructor(cmdname, configPath) {
@@ -107,15 +104,19 @@ module.exports = class {
 		this.config = null
 	}
 
-	async init(gc) {
-		this.#gc = gc
+	async initImpl() {
+		this.registerChannel(this)
+		this.registerCommand(this)
+
+		this.#gc = this.manager.gc
 
 		const toml = await fs.readFile(this.configPath, 'utf-8')
 		const parsed = await TOML.parse.async(toml)
 		this.config = parsed
 	}
 
-	async finalize() {
+	async onCommand(msg, name, args) {
+		await this.dispatchToChannels(x => x.onCommand(msg, name, args))
 	}
 
 	createChannelInstance(channel) {

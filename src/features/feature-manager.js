@@ -9,6 +9,10 @@ module.exports = class {
 		this.#gc = new GlobalConfig(['./config/config-default.toml', './config/config.toml'])
 	}
 
+	get gc() {
+		return this.#gc
+	}
+
 	async init() {
 		await gc.init()
 	}
