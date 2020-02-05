@@ -56,12 +56,17 @@ module.exports = class {
 			return
 		}
 
-		if (msg.content.startsWith('!')) {
-			const { commandName, args } = utils.parseCommand(msg.content)
-			await this.command(msg, commandName, args)
-			return
-		}
+		try {
+			if (msg.content.startsWith('!')) {
+				const { commandName, args } = utils.parseCommand(msg.content)
+				await this.command(msg, commandName, args)
+				return
+			}
 
-		await this.message(msg)
+			await this.message(msg)
+		} catch (e) {
+			console.log(e)
+			await msg.channel.send('bot の処理中にエラーが発生しました')
+		}
 	}
 }

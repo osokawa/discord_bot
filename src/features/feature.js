@@ -51,6 +51,10 @@ class Feature {
 	}
 
 	_dispatchBase(arr, map, id, createInstance) {
+		if (arr.length === 0) {
+			return []
+		}
+
 		arr.forEach((elm, idx) => {
 			if (!map.has(id)) {
 				map.set(id, new Map())
@@ -62,7 +66,7 @@ class Feature {
 			}
 		})
 
-		return Array.from(map.values(), x => Array.from(x.values())).flat()
+		return Array.from(map.get(id).values())
 	}
 
 	async _eachAsyncOf(arr, doWithX) {

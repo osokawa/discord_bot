@@ -9,5 +9,9 @@ module.exports = class extends Feature {
 		if (name === 'riu') {
 			this.manager.command(msg, 'reply', ['images', 'upload', ...args])
 		}
+
+		if (name === 'rls') {
+			this.manager.command(msg, 'res', ['images', 'list', ...args])
+		}
 	}
 }
