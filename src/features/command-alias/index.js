@@ -1,4 +1,4 @@
-const { Command, Feature } = require('../feature.js')
+const { Feature } = require('../feature.js')
 
 module.exports = class extends Feature {
 	async initImpl() {

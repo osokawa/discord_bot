@@ -1,5 +1,5 @@
-class Command {
-	async onCommand(msg, name, args) {
+class Channel {
+	createChannelInstance(channel) {
 		throw new Error('Not Implemented')
 	}
 }
@@ -10,8 +10,8 @@ class Guild {
 	}
 }
 
-class Channel {
-	createChannelInstance(guild) {
+class Command {
+	async onCommand(msg, name, args) {
 		throw new Error('Not Implemented')
 	}
 }
@@ -87,7 +87,7 @@ class Feature {
 		const channelInstances = this._dispatchBase(
 			this.#channels,
 			this.#channelInstances,
-			x => x.createInstance(channel))
+			x => x.createChannelInstance(channel))
 
 		await this._eachAsyncOf(channelInstances, doWithInstance)
 	}
@@ -100,7 +100,7 @@ class Feature {
 		const channelInstances = this._dispatchBase(
 			this.#guilds,
 			this.#guildInstances,
-			x => x.createInstance(guild))
+			x => x.createGuildInstance(guild))
 
 		await this._eachAsyncOf(channelInstances, doWithInstance)
 	}
@@ -137,4 +137,4 @@ class Feature {
 	}
 }
 
-module.exports = { Command, Feature }
+module.exports = { Channel, Guild, Command, Feature }

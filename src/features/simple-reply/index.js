@@ -1,4 +1,5 @@
 const { Attachment } = require('discord.js')
+const { Feature } = require('../feature.js')
 
 class SimpleReply {
 	constructor(feature) {
@@ -17,14 +18,12 @@ class SimpleReply {
 	}
 }
 
-module.exports = class {
+module.exports = class extends Feature {
 	constructor() {
 	}
 
-	async init() {
-	}
-
-	async finalize() {
+	async initImpl() {
+		this.registerChannel(this)
 	}
 
 	createChannelInstance(channel) {
