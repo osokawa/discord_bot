@@ -27,19 +27,12 @@ module.exports = class {
 	}
 
 	async _eachAsync(cb) {
-		await Promise.all(Array.from(this.#features.values(), feature => {
-			return (async () => {
-				if (!feature.hasInitialized) {
-					return
-				}
-
-				try {
-					await cb(feature)
-				} catch (e) {
-					console.error(e)
-				}
-			})()
-		}))
+		return await utils.forEachAsyncOf(this.#features.values(), async feature => {
+			if (!feature.hasInitialized) {
+				return
+			}
+			await cb(feature)
+		})
 	}
 
 	async command(msg, name, args) {
@@ -65,7 +58,7 @@ module.exports = class {
 
 			await this.message(msg)
 		} catch (e) {
-			console.log(e)
+			console.error(e)
 			await msg.channel.send('bot の処理中にエラーが発生しました')
 		}
 	}

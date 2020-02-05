@@ -1,3 +1,5 @@
+const utils = require('../utils.js')
+
 class Channel {
 	createChannelInstance(channel) {
 		throw new Error('Not Implemented')
@@ -69,24 +71,6 @@ class Feature {
 		return Array.from(map.get(id).values())
 	}
 
-	async _eachAsyncOf(arr, doWithX) {
-		const errors = []
-
-		await Promise.all(arr.map(x => {
-			return (async () => {
-				try {
-					await doWithX(x)
-				} catch (e) {
-					errors.push(e)
-				}
-			})()
-		}))
-
-		if (errors.length !== 0) {
-			throw errors
-		}
-	}
-
 	async dispatchToChannels(channel, doWithInstance) {
 		const channelInstances = this._dispatchBase(
 			this.#channels,
@@ -94,7 +78,7 @@ class Feature {
 			channel.id,
 			x => x.createChannelInstance(channel))
 
-		await this._eachAsyncOf(channelInstances, doWithInstance)
+		await utils.forEachAsyncOf(channelInstances, doWithInstance)
 	}
 
 	async dispatchToGuilds(guild, doWithInstance) {
@@ -108,11 +92,11 @@ class Feature {
 			guild.id,
 			x => x.createGuildInstance(guild))
 
-		await this._eachAsyncOf(channelInstances, doWithInstance)
+		await utils.forEachAsyncOf(channelInstances, doWithInstance)
 	}
 
 	async dispatchToCommands(doWithInstance) {
-		await this._eachAsyncOf(this.#commands, doWithInstance)
+		await utils.forEachAsyncOf(this.#commands, doWithInstance)
 	}
 
 	async onCommand(msg, name, args) {

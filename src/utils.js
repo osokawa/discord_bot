@@ -158,3 +158,21 @@ exports.isValidUrl = function (url) {
 	const validUrlRegExp = /^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([-.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$/
 	return url.match(validUrlRegExp) ? true : false
 }
+
+exports.forEachAsyncOf = async function (arr, doWithX) {
+	const errors = []
+
+	await Promise.all(Array.from(arr, x => {
+		return (async () => {
+			try {
+				await doWithX(x)
+			} catch (e) {
+				errors.push(e)
+			}
+		})()
+	}))
+
+	if (errors.length !== 0) {
+		throw errors
+	}
+}
