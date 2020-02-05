@@ -3,6 +3,7 @@ const utils = require('../../utils.js')
 const fs = require('fs').promises
 const { Images, isValidImageId } = require('./images.js')
 const Config = require('./config.js')
+const Feature = require('../feature.js')
 
 class CustomReply {
 	#gc
@@ -81,7 +82,11 @@ class CustomReply {
 		}
 	}
 
-	async _command(args, msg) {
+	async onCommand(msg, name, args) {
+		if (name !== this.feature.cmdname) {
+			return
+		}
+
 		await utils.subCommandProxy({
 			config: (a, m) => this.config.command(a, m),
 			images: (a, m) => this.images.command(a, m),
@@ -98,11 +103,6 @@ class CustomReply {
 			await utils.delay(100)
 		}
 
-		const command = utils.parseCommand(msg.content)
-		if (command && command.commandName === this.feature.cmdname) {
-			await this._command(command.args, msg)
-		}
-
 		await this.images.processImageUpload(msg)
 		await this._processCustomResponse(msg)
 	}
@@ -115,11 +115,15 @@ module.exports = class {
 		this.cmdname = cmdname
 	}
 
-	async init(gc) {
-		this.#gc = gc
+	async initImpl() {
+		this.registerChannel(this)
+		this.registerCommand(this)
+
+		this.#gc = this.manager.gc
 	}
 
-	async finalize() {
+	async onCommand(msg, name, args) {
+		await this.dispatchToChannels(x => x.onCommand(msg, name, args))
 	}
 
 	createChannelInstance(channel) {
