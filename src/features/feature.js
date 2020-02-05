@@ -1,5 +1,5 @@
 class Command {
-	onCommand(msg, name, args) {
+	async onCommand(msg, name, args) {
 		throw new Error('Not Implemented')
 	}
 }
@@ -23,6 +23,8 @@ class Feature {
 
 	#guildInstances = new Map()
 	#channelInstances = new Map()
+
+	#hasInitialized = false
 
 	registerCommand(command) {
 		this.#commands.push(command)
@@ -63,6 +65,18 @@ class Feature {
 		return map.values().map(x => x.values()).flat()
 	}
 
+	async dispatchToCommands(doWithInstance) {
+		await Promise.all(this.#commands.map(instance => {
+			return async () => {
+				try {
+					await doWithInstance(instance)
+				} catch (e) {
+					console.error(e)
+				}
+			}
+		}))
+	}
+
 	async dispatchToChannels(channel, doWithInstance) {
 		const channelInstances = this._dispatchBase(
 			this.#channels,
@@ -70,9 +84,9 @@ class Feature {
 			x => x.createInstance(channel))
 
 		await Promise.all(channelInstances.map(instance => {
-			return async x => {
+			return async () => {
 				try {
-					await doWithInstance(x)
+					await doWithInstance(instance)
 				} catch (e) {
 					console.error(e)
 					channel.send('bot の処理中にエラーが発生しました。')
@@ -81,13 +95,31 @@ class Feature {
 		}))
 	}
 
-	async _processGuild() {}
-
-	async _processCommand() {}
+	async onCommand(msg, name, args) {
+		await this.dispatchToCommands(x => x.onCommand(msg, name, args))
+	}
 
 	async onMessage(msg) {
-		await dispatchToChannels(async x => x.onMessage(msg))
+		await this.dispatchToChannels(x => x.onMessage(msg))
 		await _processGuild()
+	}
+
+	hasInitialized() {
+		return this.#hasInitialized
+	}
+
+	// init はこっちをオーバーライドして
+	async initImpl() {
+	}
+
+	// オーバライドしないで
+	async init(manager) {
+		this.manager = manager
+		await initImpl()
+		this.hasInitialized = true
+	}
+
+	async finalize() {
 	}
 }
 
