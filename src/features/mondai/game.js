@@ -128,7 +128,7 @@ module.exports = class {
 	async _processAnswerMessage(msg) {
 		const text = normalizeAnswerMessage(msg.content)
 		const ans = this.answer
-		const title = utils.replaceEmoji(ans.title, msg.guild.emojis)
+		const title = ans.title
 
 		// 正解
 		const correctMatch = text.match(new RegExp(ans.pattern, 'i'))
