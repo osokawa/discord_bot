@@ -52,23 +52,23 @@ class Feature {
 		return this.#channels
 	}
 
-	_dispatchBase(arr, map, id, createInstance) {
+	_dispatchBase(arr, instancesMap, id, createInstance) {
 		if (arr.length === 0) {
 			return []
 		}
 
 		arr.forEach((elm, idx) => {
-			if (!map.has(id)) {
-				map.set(id, new Map())
+			if (!instancesMap.has(id)) {
+				instancesMap.set(id, new Map())
 			}
 
-			const mapOfId = map.get(id)
+			const mapOfId = instancesMap.get(id)
 			if (!mapOfId.get(idx)) {
 				mapOfId.set(idx, createInstance(elm))
 			}
 		})
 
-		return Array.from(map.get(id).values())
+		return Array.from(instancesMap.get(id).values())
 	}
 
 	async dispatchToChannels(channel, doWithInstance) {
