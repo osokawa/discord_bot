@@ -1,61 +1,74 @@
 import * as utils from '../utils'
 import * as discordjs from 'discord.js'
 import FeatureManager from './feature-manager'
+import GlobalConfig from '../global-config'
 
-export class Channel {
-	createChannelInstance(channel: discordjs.Channel) {
-		throw new Error('Not Implemented')
+export abstract class ChannelInstance {
+	protected gc: GlobalConfig
+	constructor(feature: Feature) {
+		this.gc = feature.gc
 	}
+
+	abstract onMessage(msg: discordjs.Message): Promise<void>
 }
 
-export class Guild {
-	createGuildInstance(guild: discordjs.Guild) {
-		throw new Error('Not Implemented')
-	}
+export interface Channel {
+	createChannelInstance(channel: utils.LikeTextChannel): ChannelInstance
 }
 
-export class Command {
-	async onCommand(msg: discordjs.Message, name: string, args: string[]) {
-		throw new Error('Not Implemented')
+export abstract class GuildInstance {
+	protected gc: GlobalConfig
+	constructor(feature: Feature) {
+		this.gc = feature.gc
 	}
+
+	abstract onMessage(msg: discordjs.Message): Promise<void>
 }
 
-export class Feature {
+export interface Guild {
+	createGuildInstance(guild: discordjs.Guild): GuildInstance
+}
+
+export interface Command {
+	onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void>
+}
+
+export abstract class Feature {
 	private _commands: Command[] = []
 	private _guilds: Guild[] = []
 	private _channels: Channel[] = []
 
-	private _guildInstances: Map<string, any> = new Map()
-	private _channelInstances: Map<string, any> = new Map()
+	private _guildInstances: Map<string, Map<number, GuildInstance>> = new Map()
+	private _channelInstances: Map<string, Map<number, ChannelInstance>> = new Map()
 
-	private _hasInitialized: boolean = false
+	private _hasInitialized = false
 	private _manager: FeatureManager | undefined
 
-	registerCommand(command: Command) {
+	registerCommand(command: Command): void {
 		this._commands.push(command)
 	}
 
-	get commands() {
+	get commands(): Command[] {
 		return this._commands
 	}
 
-	registerGuild(guild: Guild) {
+	registerGuild(guild: Guild): void {
 		this._guilds.push(guild)
 	}
 
-	get guilds() {
+	get guilds(): Guild[] {
 		return this._guilds
 	}
 
-	registerChannel(channel: Channel) {
+	registerChannel(channel: Channel): void {
 		this._channels.push(channel)
 	}
 
-	get channels() {
+	get channels(): Channel[] {
 		return this._channels
 	}
 
-	protected get manager() {
+	get manager(): FeatureManager {
 		if (this._manager === undefined) {
 			throw '#init() を先に呼んで'
 		}
@@ -63,7 +76,7 @@ export class Feature {
 		return this._manager
 	}
 
-	protected get gc() {
+	get gc(): GlobalConfig {
 		return this.manager.gc
 	}
 
@@ -91,7 +104,7 @@ export class Feature {
 		return Array.from(instancesMap.get(id)!.values())
 	}
 
-	async dispatchToChannels(channel: discordjs.Channel, doWithInstance: (i: any) => Promise<void>) {
+	async dispatchToChannels(channel: utils.LikeTextChannel, doWithInstance: (i: ChannelInstance) => Promise<void>): Promise<void> {
 		const channelInstances = this._dispatchBase(
 			this._channels,
 			this._channelInstances,
@@ -101,7 +114,7 @@ export class Feature {
 		await utils.forEachAsyncOf(channelInstances, doWithInstance)
 	}
 
-	async dispatchToGuilds(guild: discordjs.Guild, doWithInstance: (i: any) => Promise<void>) {
+	async dispatchToGuilds(guild: discordjs.Guild, doWithInstance: (i: GuildInstance) => Promise<void>): Promise<void> {
 		if (!guild) {
 			return
 		}
@@ -115,34 +128,34 @@ export class Feature {
 		await utils.forEachAsyncOf(channelInstances, doWithInstance)
 	}
 
-	async dispatchToCommands(doWithInstance: (i: any) => Promise<void>) {
+	async dispatchToCommands(doWithInstance: (i: any) => Promise<void>): Promise<void> {
 		await utils.forEachAsyncOf(this._commands, doWithInstance)
 	}
 
-	async onCommand(msg: discordjs.Message, name: string, args: string[]) {
+	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
 		await this.dispatchToCommands(x => x.onCommand(msg, name, args))
 	}
 
-	async onMessage(msg: discordjs.Message) {
+	async onMessage(msg: discordjs.Message): Promise<void> {
 		await this.dispatchToChannels(msg.channel, x => x.onMessage(msg))
 		await this.dispatchToGuilds(msg.guild, x => x.onMessage(msg))
 	}
 
-	hasInitialized() {
+	get hasInitialized(): boolean {
 		return this._hasInitialized
 	}
 
 	// init はこっちをオーバーライドして
-	async initImpl() {
-	}
+	abstract initImpl(): Promise<void>
 
 	// オーバライドしないで
-	async init(manager: FeatureManager) {
+	async init(manager: FeatureManager): Promise<void> {
 		this._manager = manager
 		await this.initImpl()
 		this._hasInitialized = true
 	}
 
-	async finalize() {
+	async finalize(): Promise<void> {
+		// オーバーライドしていいよ
 	}
 }

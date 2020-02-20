@@ -3,10 +3,9 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "scripts": {
-    "build": "webpack",
-    "start": "webpack && node -r dotenv/config dist/main.js",
-    "test": "jest",
-    "lint": "eslint 'src/**/*.js'"
+    "build": "webpack --mode=development",
+    "start": "webpack --mode=development && node -r dotenv/config dist/main.js",
+    "test": "jest"
   },
   "license": "MIT",
   "private": true,
@@ -21,7 +20,10 @@
   "devDependencies": {
     "@types/lodash": "^4.14.149",
     "@types/node": "^13.7.4",
+    "@typescript-eslint/eslint-plugin": "^2.20.0",
+    "@typescript-eslint/parser": "^2.20.0",
     "eslint": "^6.8.0",
+    "eslint-loader": "^3.0.3",
     "eslint-plugin-jest": "^23.6.0",
     "jest": "^25.1.0",
     "ts-loader": "^6.2.1",

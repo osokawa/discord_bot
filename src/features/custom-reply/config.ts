@@ -11,9 +11,9 @@ function validateParsedConfig(config: any): boolean {
 	return true
 }
 
-function isValidId(id: string) {
+function isValidId(id: string): boolean {
 	const validIdRegExp = /^[a-zA-Z1-9-_]{2,32}$/
-	return id.match(validIdRegExp) ? true : false
+	return validIdRegExp.exec(id) ? true : false
 }
 
 export default class {
@@ -23,7 +23,7 @@ export default class {
 	constructor(private channelInstance: CustomReply, private gc: GlobalConfig) {
 	}
 
-	private async _updateConfig(id: string, viaInternet = false) {
+	private async _updateConfig(id: string, viaInternet = false): Promise<void> {
 		const configFilePath = `./config/custom-reply/${this.channelInstance.channel.id}/${id}.dat`
 
 		if (viaInternet) {
@@ -41,7 +41,7 @@ export default class {
 		}
 	}
 
-	async init() {
+	async init(): Promise<void> {
 		await fs.mkdir(`./config/custom-reply/${this.channelInstance.channel.id}/images`, { recursive: true })
 
 		let json
@@ -66,7 +66,7 @@ export default class {
 		}
 	}
 
-	private async _processReloadLocalCommand(args: string[], msg: discordjs.Message) {
+	private async _processReloadLocalCommand(args: string[], msg: discordjs.Message): Promise<void> {
 		for (const id of this.configSources.keys()) {
 			try {
 				this._updateConfig(id)
@@ -79,7 +79,7 @@ export default class {
 		await this.gc.send(msg, 'customReply.config.localReloadingComplete')
 	}
 
-	async _processReloadCommand(args: string[], msg: discordjs.Message) {
+	private async _processReloadCommand(args: string[], msg: discordjs.Message): Promise<void> {
 		if (args.length < 1) {
 			await this.gc.send(msg, 'customReply.config.haveToSpecifyId')
 			return
@@ -103,13 +103,13 @@ export default class {
 		await this.gc.send(msg, 'customReply.config.reloadingComplete', { id })
 	}
 
-	async writeSourcesJson() {
+	async writeSourcesJson(): Promise<void> {
 		await fs.writeFile(
 			`./config/custom-reply/${this.channelInstance.channel.id}/sources.json`,
 			JSON.stringify([...this.configSources]))
 	}
 
-	async addCommand(args: string[], msg: discordjs.Message) {
+	async addCommand(args: string[], msg: discordjs.Message): Promise<void> {
 		if (args.length < 2) {
 			await this.gc.send(msg, 'customReply.config.haveToSpecifyIdAndUrl')
 			return
@@ -134,13 +134,13 @@ export default class {
 		await this.gc.send(msg, 'customReply.config.addingComplete', { id })
 	}
 
-	async listCommand(args: string[], msg: discordjs.Message) {
+	async listCommand(args: string[], msg: discordjs.Message): Promise<void> {
 		await this.gc.send(msg, 'customReply.config.list', {
 			sources: [...this.configSources].map(([k, v]) => `${k}: ${v.source}`).join('\n')
 		})
 	}
 
-	async removeCommand(args: string[], msg: discordjs.Message) {
+	async removeCommand(args: string[], msg: discordjs.Message): Promise<void> {
 		if (args.length < 1) {
 			await this.gc.send(msg, 'customReply.config.haveToSpecifyId')
 			return
@@ -160,7 +160,7 @@ export default class {
 		await this.gc.send(msg, 'customReply.config.removingComplete', { id })
 	}
 
-	async command(args: string[], msg: discordjs.Message) {
+	async command(args: string[], msg: discordjs.Message): Promise<void> {
 		await utils.subCommandProxy({
 			reload: (a, m) => this._processReloadCommand(a, m),
 			reloadlocal: (a, m) => this._processReloadLocalCommand(a, m),

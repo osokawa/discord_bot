@@ -6,11 +6,11 @@ export default class extends Feature {
 		super()
 	}
 
-	async initImpl() {
+	async initImpl(): Promise<void> {
 		this.registerCommand(this)
 	}
 
-	async onCommand(msg: discordjs.Message, name: string, args: string[]) {
+	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
 		if (name === this.from) {
 			await this.manager.command(msg, this.toName, [...this.toArgs, ...args])
 		}

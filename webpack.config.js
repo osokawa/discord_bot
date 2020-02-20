@@ -2,7 +2,6 @@ const path = require('path')
 const nodeExternals = require('webpack-node-externals')
 
 module.exports = {
-	mode: 'development',
 	target: 'node',
 	externals: [nodeExternals()],
 	entry: './src/index.ts',
@@ -12,6 +11,12 @@ module.exports = {
 	},
 	module: {
 		rules: [
+			{
+				enforce: 'pre',
+				test: /\.(ts|js)$/,
+				exclude: /node_modules/,
+				loader: 'eslint-loader',
+			},
 			{
 				test: /\.ts$/,
 				loader: 'ts-loader'

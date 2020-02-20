@@ -1,28 +1,29 @@
 import * as discordjs from 'discord.js'
-import { Feature } from '../feature'
+import { Feature, ChannelInstance } from '../feature'
 
-class SimpleReply {
+class SimpleReply extends ChannelInstance {
 	constructor(private feature: FeatureSimpleReply) {
+		super(feature)
 	}
 
-	async onMessage(msg: discordjs.Message) {
+	async onMessage(msg: discordjs.Message): Promise<void> {
 		if (msg.content === 'ping') {
 			msg.reply('Pong!')
 		}
 
-		if (msg.content.indexOf('チノちゃんかわいい') !== -1) {
+		if (msg.content.includes('チノちゃんかわいい')) {
 			const attachment = new discordjs.Attachment('./assets/chino.png')
-			msg.reply('わかる', { files: [attachment] })
+			await msg.reply('わかる', { files: [attachment] })
 		}
 	}
 }
 
 export class FeatureSimpleReply extends Feature {
-	async initImpl() {
+	async initImpl(): Promise<void> {
 		this.registerChannel(this)
 	}
 
-	createChannelInstance(channel: discordjs.Channel) {
+	createChannelInstance(): ChannelInstance {
 		return new SimpleReply(this)
 	}
 }

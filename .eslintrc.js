@@ -1,12 +1,13 @@
 module.exports = {
 	'env': {
-		'commonjs': true,
 		'es6': true,
 		'node': true
 	},
-	'plugins': ['jest'],
 	'extends': [
 		'eslint:recommended',
+		'plugin:@typescript-eslint/eslint-recommended',
+		'plugin:@typescript-eslint/recommended',
+		'plugin:@typescript-eslint/recommended-requiring-type-checking',
 		'plugin:jest/recommended',
 		'plugin:jest/style'
 	],
@@ -14,9 +15,16 @@ module.exports = {
 		'Atomics': 'readonly',
 		'SharedArrayBuffer': 'readonly'
 	},
+	'parser': '@typescript-eslint/parser',
 	'parserOptions': {
-		'ecmaVersion': 2018
+		'ecmaVersion': 2018,
+		'sourceType': 'module',
+		'project': './tsconfig.json'
 	},
+	'plugins': [
+		'@typescript-eslint',
+		'jest'
+	],
 	'rules': {
 		'indent': [
 			'error',
@@ -33,6 +41,12 @@ module.exports = {
 		'semi': [
 			'error',
 			'never'
-		]
+		],
+		'@typescript-eslint/member-delimiter-style': ['error', {
+			'multiline': {
+				'delimiter': 'none'
+			}
+		}],
+		'@typescript-eslint/require-await': 'warn'
 	}
 }

@@ -1,10 +1,10 @@
 import * as lodash from 'lodash'
 import * as discordjs from 'discord.js'
 
-export function parseCommand(string: string) {
-	const found = string.match(/^!([a-zA-Z_-]+)(\s+?.+)?$/)
+export function parseCommand(string: string): { commandName: string; args: string[] } | undefined {
+	const found = /^!([a-zA-Z_-]+)(\s+?.+)?$/.exec(string)
 	if (!found) {
-		return null
+		return
 	}
 
 	const commandName = found[1].toLowerCase()
@@ -15,7 +15,12 @@ export function parseCommand(string: string) {
 	return { commandName, args }
 }
 
-export function parseCommandArgs(argsToParse: string[], optionsWithValue: string[] = [], minimumArgs = 0) {
+export function parseCommandArgs(
+	argsToParse: string[],
+	optionsWithValue: string[] = [],
+	minimumArgs = 0):
+	{ args: string[]; options: { [_: string]: string | boolean } } {
+
 	const args = []
 	const options: { [_: string]: string | boolean } = {}
 
@@ -161,14 +166,14 @@ export function replaceEmoji(text: string, emojis: discordjs.Collection<discordj
 
 export function isValidUrl(url: string): boolean {
 	const validUrlRegExp = /^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([-.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$/
-	return url.match(validUrlRegExp) ? true : false
+	return validUrlRegExp.exec(url) ? true : false
 }
 
 export async function forEachAsyncOf<T>(arr: Iterable<T>, doWithX: (x: T) => Promise<void>): Promise<void> {
 	const errors: any[] = []
 
 	await Promise.all(Array.from(arr, x => {
-		return (async () => {
+		return (async (): Promise<void> => {
 			try {
 				await doWithX(x)
 			} catch (e) {
@@ -181,3 +186,5 @@ export async function forEachAsyncOf<T>(arr: Iterable<T>, doWithX: (x: T) => Pro
 		throw errors
 	}
 }
+
+export type LikeTextChannel = discordjs.TextChannel | discordjs.GroupDMChannel | discordjs.DMChannel

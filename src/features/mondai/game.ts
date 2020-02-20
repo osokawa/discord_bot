@@ -5,9 +5,8 @@ import { promises as fs } from 'fs'
 import * as path from 'path'
 import * as utils from '../../utils'
 import GlobalConfig from '../../global-config'
-
-// @ts-ignore
-import { generateImageMap } from './image-map.js'
+import { FeatureMondai, Mondai } from '.'
+import { generateImageMap } from './image-map'
 
 type GameOption = {
 	repeat: boolean
@@ -24,12 +23,13 @@ function generateMondaiImage(mode: string, inPath: string, outPath: string, opts
 	}
 
 	return new Promise((resolve, reject) => {
-		execFile('./tools/mondai.rb', [...optArgs, mode, inPath, outPath], (error, stdout) => {
+		const args: ReadonlyArray<string> = [...optArgs, mode, inPath, outPath] as any
+		execFile('./tools/mondai.rb', args, {}, (error: Error | null, stdout: string | Buffer) => {
 			if (error) {
 				reject(error)
 			}
 			try {
-				resolve(JSON.parse(stdout))
+				resolve(JSON.parse(stdout as string))
 			} catch (e) {
 				reject(e)
 			}
@@ -52,39 +52,39 @@ type Answer = {
 }
 
 export default class Game {
-	private _incorrectImageLog: { filename: string, answer: Answer }[] = []
-	private feature: any
+	private _incorrectImageLog: { filename: string; answer: Answer }[] = []
 	private answer: Answer | undefined
 	private incorrectCount = 0
 	private correctCount = 0
-	private incorrectLimit = 3
 	private processing = false
 	private tmpDir: string | undefined
+	private feature: FeatureMondai
 
-	constructor(private channelInstance: any, private _gc: GlobalConfig, private mode: GameMode, private options: GameOption) {
+	constructor(private channelInstance: Mondai, private _gc: GlobalConfig, private mode: GameMode, private options: GameOption) {
 		this.feature = channelInstance.feature
-		if (options.hasOwnProperty('life')) {
-			this.incorrectLimit = options.life
-		}
 	}
 
-	private get _isAudioMode() {
+	private get incorrectLimit(): number {
+		return this.options.life
+	}
+
+	private get _isAudioMode(): boolean {
 		const audioModes = ['audio', 'music', 'intro']
 		return audioModes.includes(this.mode)
 	}
 
-	private get _isMosaicMode() {
+	private get _isMosaicMode(): boolean {
 		return this.mode === 'mosaic'
 	}
 
-	private _getTmpPath(filename: string) {
+	private _getTmpPath(filename: string): string {
 		if (this.tmpDir === undefined) {
 			throw 'なんかおかしい'
 		}
 		return path.join(this.tmpDir, filename)
 	}
 
-	async _postMondai() {
+	async _postMondai(): Promise<void> {
 		if (this.tmpDir === undefined) {
 			throw 'なんかおかしい'
 		}
@@ -109,21 +109,21 @@ export default class Game {
 			}
 		} catch (e) {
 			// TODO: 特別なエラー型にラップする
-			throw e
+			throw Error(e)
 		}
 
 		const attachment = new discordjs.Attachment(outputPath)
 		await this._gc.sendToChannel(this.channelInstance.channel, 'mondai.sendMondaiImage', {}, { files: [attachment] })
 	}
 
-	async init() {
+	async init(): Promise<void> {
 		this.tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mondai-'))
 		this.processing = true
 		await this._postMondai()
 		this.processing = false
 	}
 
-	async _postResultMessage(msg: discordjs.Message, key: string, ans: Answer, title: string) {
+	async _postResultMessage(msg: discordjs.Message, key: string, ans: Answer, title: string): Promise<void> {
 		const options: { [_: string]: any } = {}
 		if (this._isMosaicMode) {
 			options.files = [new discordjs.Attachment(this._getTmpPath('original.jpg'))]
@@ -136,7 +136,7 @@ export default class Game {
 			options)
 	}
 
-	async _pushIncorrectImageLog() {
+	async _pushIncorrectImageLog(): Promise<void> {
 		if (this.answer === undefined) {
 			throw 'なんかおかしい'
 		}
@@ -147,7 +147,7 @@ export default class Game {
 		}
 	}
 
-	async _processAnswerMessage(msg: discordjs.Message) {
+	async _processAnswerMessage(msg: discordjs.Message): Promise<boolean> {
 		const text = normalizeAnswerMessage(msg.content)
 		const ans = this.answer
 		if (ans === undefined) {
@@ -156,7 +156,7 @@ export default class Game {
 		const title = ans.title
 
 		// 正解
-		const correctMatch = text.match(new RegExp(ans.pattern, 'i'))
+		const correctMatch = new RegExp(ans.pattern, 'i').exec(text)
 		if (correctMatch && correctMatch[0] === text) {
 			await this._postResultMessage(msg, 'correct', ans, title)
 
@@ -170,7 +170,7 @@ export default class Game {
 		}
 
 		// 降参
-		if (text.match(new RegExp(this.feature.config.options.surrenderPattern, 'i'))) {
+		if (new RegExp(this.feature.config.options.surrenderPattern, 'i').exec(text)) {
 			this.incorrectCount++
 			this._pushIncorrectImageLog()
 
@@ -191,7 +191,7 @@ export default class Game {
 
 		// 不正解
 		for (const episode of this.feature.config.episodes) {
-			const incorrectMatch = text.match(new RegExp(episode.pattern, 'i'))
+			const incorrectMatch = new RegExp(episode.pattern, 'i').exec(text)
 			if (incorrectMatch && incorrectMatch[0] === text) {
 				this.incorrectCount++
 
@@ -211,7 +211,7 @@ export default class Game {
 	}
 
 	// true なら続行
-	async onMessage(msg: discordjs.Message) {
+	async onMessage(msg: discordjs.Message): Promise<boolean> {
 		if (msg.author.bot || this.processing) {
 			return true
 		}
@@ -222,7 +222,7 @@ export default class Game {
 		return res
 	}
 
-	async finalize() {
+	async finalize(): Promise<void> {
 		if (this.options.repeat) {
 			await this._gc.sendToChannel(this.channelInstance.channel, 'mondai.repeatResult', { correctCount: this.correctCount })
 			if (!this._isAudioMode && 10 <= this.correctCount) {

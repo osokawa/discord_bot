@@ -7,7 +7,7 @@ import { CustomReply } from '.'
 
 export function isValidImageId(id: string): boolean {
 	const validImageIdRegExp = /^[a-zA-Z0-9-_]{2,32}\.(png|jpg|jpeg|gif)$/
-	return id.match(validImageIdRegExp) ? true : false
+	return validImageIdRegExp.exec(id) ? true : false
 }
 
 export class Images {
@@ -18,20 +18,20 @@ export class Images {
 	constructor(private channelInstance: CustomReply, private gc: GlobalConfig) {
 	}
 
-	async init() {
+	async init(): Promise<void> {
 		this._images = await fs.readdir(`./config/custom-reply/${this.channelInstance.channel.id}/images/`)
 		this._images.sort()
 	}
 
-	get images() {
+	get images(): string[] {
 		return this._images
 	}
 
-	getImagePathById(id: string) {
+	getImagePathById(id: string): string {
 		return `./config/custom-reply/${this.channelInstance.channel.id}/images/${id}`
 	}
 
-	async uploadCommand(args: string[], msg: discordjs.Message) {
+	async uploadCommand(args: string[], msg: discordjs.Message): Promise<void> {
 		if (this.state === 'waitingImage') {
 			await this.gc.send(msg, 'customReply.images.uploadingImageCancel')
 			this.state = 'free'
@@ -52,7 +52,7 @@ export class Images {
 		await this.gc.send(msg, 'customReply.images.readyToUpload')
 	}
 
-	async listCommand(rawArgs: string[], msg: discordjs.Message) {
+	async listCommand(rawArgs: string[], msg: discordjs.Message): Promise<void> {
 		let args, options: { [_: string]: string | boolean }
 		try {
 			({ args, options } = utils.parseCommandArgs(rawArgs, ['s', 'search']))
@@ -63,7 +63,7 @@ export class Images {
 
 		const search = utils.getOption(options, ['s', 'search'])
 		const images = search
-			? this._images.filter(x => x.match(new RegExp(search as string)))
+			? this._images.filter(x => new RegExp(search as string).exec(x))
 			: this._images
 
 		if (images.length === 0) {
@@ -90,7 +90,7 @@ export class Images {
 			{ currentPage: pageNumber, maxPage, images: pagedImages.join('\n') })
 	}
 
-	async removeCommand(args: string[], msg: discordjs.Message) {
+	async removeCommand(args: string[], msg: discordjs.Message): Promise<void> {
 		if (args.length < 1) {
 			await this.gc.send(msg, 'customReply.images.haveToSpecifyId')
 			return
@@ -113,7 +113,7 @@ export class Images {
 		await this.gc.send(msg, 'customReply.images.removingComplete')
 	}
 
-	async previewCommand(args: string[], msg: discordjs.Message) {
+	async previewCommand(args: string[], msg: discordjs.Message): Promise<void> {
 		if (args.length < 1) {
 			await this.gc.send(msg, 'customReply.images.haveToSpecifyId')
 			return
@@ -136,12 +136,12 @@ export class Images {
 			{ files: [new discordjs.Attachment(this.getImagePathById(args[0]))] })
 	}
 
-	async reloadLocalCommand(args: string[], msg: discordjs.Message) {
+	async reloadLocalCommand(args: string[], msg: discordjs.Message): Promise<void> {
 		await this.init()
 		await this.gc.send(msg, 'customReply.images.localReloadingComplete')
 	}
 
-	async command(args: string[], msg: discordjs.Message) {
+	async command(args: string[], msg: discordjs.Message): Promise<void> {
 		await utils.subCommandProxy({
 			upload: (a, m) => this.uploadCommand(a, m),
 			list: (a, m) => this.listCommand(a, m),
@@ -151,7 +151,7 @@ export class Images {
 		}, args, msg)
 	}
 
-	async processImageUpload(msg: discordjs.Message) {
+	async processImageUpload(msg: discordjs.Message): Promise<void> {
 		if (this.state === 'waitingImage') {
 			if (msg.attachments.size !== 1) {
 				return

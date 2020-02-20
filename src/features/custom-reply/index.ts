@@ -3,8 +3,7 @@ import * as utils from '../../utils'
 import { promises as fs } from 'fs'
 import { Images, isValidImageId } from './images'
 import Config from './config'
-import { Feature } from '../feature'
-import GlobalConfig from '../../global-config'
+import { Feature, ChannelInstance } from '../feature'
 
 type Response = {
 	action: string
@@ -14,34 +13,35 @@ type Response = {
 	reply?: boolean
 }
 
-export class CustomReply {
+export class CustomReply extends ChannelInstance {
 	private initialized = false
 	private images: Images
 	private config: Config
 
-	constructor(private feature: FeatureCustomReply, public channel: discordjs.Channel, private readonly gc: GlobalConfig) {
-		this.images = new Images(this, gc)
-		this.config = new Config(this, gc)
+	constructor(private feature: FeatureCustomReply, public channel: discordjs.Channel) {
+		super(feature)
+		this.images = new Images(this, this.gc)
+		this.config = new Config(this, this.gc)
 	}
 
-	async init() {
+	async init(): Promise<void> {
 		await this.config.init()
 		await this.images.init()
 		this.initialized = true
 	}
 
-	async _processPickedResponse(msg: discordjs.Message, response: Response) {
+	async _processPickedResponse(msg: discordjs.Message, response: Response): Promise<void> {
 		if (response.action === 'do-nothing') {
 			return
 		}
 
 		let text = response.text || ''
-		let options: discordjs.MessageOptions = {}
+		const options: discordjs.MessageOptions = {}
 
 		if (response.action === 'gacha') {
 			let list = this.images.images
 			if (response.pattern) {
-				list = list.filter(x => x.match(new RegExp(response.pattern)))
+				list = list.filter(x => new RegExp(response.pattern).exec(x))
 			}
 
 			if (list.length === 0) {
@@ -77,10 +77,10 @@ export class CustomReply {
 		}
 	}
 
-	async _processCustomResponse(msg: discordjs.Message) {
+	async _processCustomResponse(msg: discordjs.Message): Promise<void> {
 		for (const [, v] of this.config.config) {
 			for (const content of v.contents) {
-				if (msg.content.match(new RegExp(content.target))) {
+				if (new RegExp(content.target).exec(msg.content)) {
 					const response = utils.randomPick(content.responses)
 					await this._processPickedResponse(msg, response)
 				}
@@ -88,7 +88,7 @@ export class CustomReply {
 		}
 	}
 
-	async onCommand(msg: discordjs.Message, name: string, args: string[]) {
+	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
 		if (name !== this.feature.cmdname) {
 			return
 		}
@@ -99,7 +99,7 @@ export class CustomReply {
 		}, args, msg)
 	}
 
-	async onMessage(msg: discordjs.Message) {
+	async onMessage(msg: discordjs.Message): Promise<void> {
 		if (msg.author.bot) {
 			return
 		}
@@ -119,17 +119,17 @@ export class FeatureCustomReply extends Feature {
 		super()
 	}
 
-	async initImpl() {
+	async initImpl(): Promise<void> {
 		this.registerChannel(this)
 		this.registerCommand(this)
 	}
 
-	async onCommand(msg: discordjs.Message, name: string, args: string[]) {
-		await this.dispatchToChannels(msg.channel, (x: CustomReply) => x.onCommand(msg, name, args))
+	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
+		await this.dispatchToChannels(msg.channel, x => (x as CustomReply).onCommand(msg, name, args))
 	}
 
-	createChannelInstance(channel: discordjs.Channel) {
-		const client = new CustomReply(this, channel, this.gc)
+	createChannelInstance(channel: discordjs.Channel): ChannelInstance {
+		const client = new CustomReply(this, channel)
 		client.init()
 		return client
 	}

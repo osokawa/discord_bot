@@ -13,24 +13,24 @@ export default class {
 		this._gc = new GlobalConfig(['./config/config-default.toml', './config/config.toml'])
 	}
 
-	get gc() {
+	get gc(): GlobalConfig {
 		return this._gc
 	}
 
-	async init() {
+	async init(): Promise<void> {
 		await this._gc.init()
 	}
 
-	async finalize() {
+	async finalize(): Promise<void> {
 		await this._eachAsync(x => x.finalize())
 	}
 
-	async registerFeature(id: string, feature: Feature) {
+	async registerFeature(id: string, feature: Feature): Promise<void> {
 		this._features.set(id, feature)
 		await feature.init(this)
 	}
 
-	private async _eachAsync(cb: (x: Feature) => void) {
+	private async _eachAsync(cb: (x: Feature) => Promise<void>): Promise<void> {
 		return await utils.forEachAsyncOf(this._features.values(), async feature => {
 			if (!feature.hasInitialized) {
 				return
@@ -39,16 +39,16 @@ export default class {
 		})
 	}
 
-	async command(msg: discordjs.Message, name: string, args: string[]) {
+	async command(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
 		await this._eachAsync(x => x.onCommand(msg, name, args))
 	}
 
-	async message(msg: discordjs.Message) {
+	async message(msg: discordjs.Message): Promise<void> {
 		await this._eachAsync(x => x.onMessage(msg))
 	}
 
 	// discord.js の message イベントからのみ呼ばれることを想定
-	async onMessage(msg: discordjs.Message) {
+	async onMessage(msg: discordjs.Message): Promise<void> {
 		if (msg.author.bot) {
 			return
 		}

@@ -3,19 +3,18 @@ import * as utils from '../../utils'
 import TOML from '@iarna/toml'
 import Game from './game'
 
-import { Feature } from '../feature'
+import { Feature, ChannelInstance } from '../feature'
 
 import * as discordjs from 'discord.js'
 
-import GlobalConfig from '../../global-config'
-
-export class Mondai {
+export class Mondai extends ChannelInstance {
 	private game: Game | undefined
 
-	constructor(private feature: FeatureMondai, private channel: discordjs.Channel, private _gc: GlobalConfig) {
+	constructor(public feature: FeatureMondai, public channel: discordjs.TextChannel | discordjs.GroupDMChannel | discordjs.DMChannel) {
+		super(feature)
 	}
 
-	private async _finalizeGame() {
+	private async _finalizeGame(): Promise<void> {
 		// 2回以上 Game.finalize() が呼ばれないようにする
 		if (this.game === undefined) {
 			return
@@ -26,7 +25,7 @@ export class Mondai {
 		await instance.finalize()
 	}
 
-	private async onCommand(msg: discordjs.Message, name: string, rawArgs: string[]) {
+	public async onCommand(msg: discordjs.Message, name: string, rawArgs: string[]): Promise<void> {
 		if (name !== this.feature.cmdname) {
 			return
 		}
@@ -35,7 +34,7 @@ export class Mondai {
 		try {
 			({ args, options } = utils.parseCommandArgs(rawArgs, ['life', 'l']))
 		} catch (e) {
-			await this._gc.send(msg, 'mondai.invalidCommand', { e })
+			await this.gc.send(msg, 'mondai.invalidCommand', { e })
 			return
 		}
 
@@ -45,7 +44,7 @@ export class Mondai {
 				return
 			}
 
-			await this._gc.send(msg, 'mondai.lastCommandIsStillInProgress', { cmdname: this.feature.cmdname })
+			await this.gc.send(msg, 'mondai.lastCommandIsStillInProgress', { cmdname: this.feature.cmdname })
 			return
 		}
 
@@ -58,13 +57,13 @@ export class Mondai {
 			if (validModes.includes(args[0])) {
 				mode = args[0]
 			} else {
-				await this._gc.send(msg, 'mondai.invalidCommandMode')
+				await this.gc.send(msg, 'mondai.invalidCommandMode')
 				return
 			}
 		}
 
 		try {
-			const opts: { repeat?: any, life?: any } = {
+			const opts: { repeat?: any; life?: any } = {
 				repeat: utils.getOption(options, ['repeat', 'r'])
 			}
 
@@ -74,7 +73,7 @@ export class Mondai {
 				opts.life = parseInt(life as string, 10)
 			}
 
-			this.game = new Game(this, this._gc, mode, opts as any)
+			this.game = new Game(this, this.gc, mode, opts as any)
 			await this.game.init()
 		} catch (e) {
 			this.game = undefined
@@ -82,7 +81,7 @@ export class Mondai {
 		}
 	}
 
-	async onMessage(msg: discordjs.Message) {
+	async onMessage(msg: discordjs.Message): Promise<void> {
 		if (this.game !== undefined) {
 			let res
 			try {
@@ -106,7 +105,7 @@ export class FeatureMondai extends Feature {
 		super()
 	}
 
-	async initImpl() {
+	async initImpl(): Promise<void> {
 		this.registerChannel(this)
 		this.registerCommand(this)
 
@@ -115,11 +114,11 @@ export class FeatureMondai extends Feature {
 		this.config = parsed
 	}
 
-	async onCommand(msg: discordjs.Message, name: string, args: string[]) {
-		await this.dispatchToChannels(msg.channel, x => x.onCommand(msg, name, args))
+	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
+		await this.dispatchToChannels(msg.channel, x => (x as Mondai).onCommand(msg, name, args))
 	}
 
-	createChannelInstance(channel: discordjs.Channel) {
-		return new Mondai(this, channel, this.gc)
+	createChannelInstance(channel: utils.LikeTextChannel): ChannelInstance {
+		return new Mondai(this, channel)
 	}
 }
