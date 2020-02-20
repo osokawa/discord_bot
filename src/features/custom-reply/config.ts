@@ -1,28 +1,29 @@
-const TOML = require('@iarna/toml')
-const axios = require('axios')
-const fs = require('fs').promises
-const utils = require('../../utils.js')
+import TOML from '@iarna/toml'
+import axios from 'axios'
+import { promises as fs } from 'fs'
+import * as utils from '../../utils'
+import * as discordjs from 'discord.js'
+import GlobalConfig from '../../global-config'
+import { CustomReply } from '.'
 
-function validateParsedConfig() {
+function validateParsedConfig(config: any): boolean {
 	// TODO: バリデーション実施。ダメな時は throw する
+	return true
 }
 
-function isValidId(id) {
+function isValidId(id: string) {
 	const validIdRegExp = /^[a-zA-Z1-9-_]{2,32}$/
 	return id.match(validIdRegExp) ? true : false
 }
 
-module.exports = class {
-	#gc
+export default class {
+	public config = new Map()
+	private configSources = new Map()
 
-	constructor(channelInstance, gc) {
-		this.channelInstance = channelInstance
-		this.#gc = gc
-		this.config = new Map()
-		this.configSources = new Map()
+	constructor(private channelInstance: CustomReply, private gc: GlobalConfig) {
 	}
 
-	async _updateConfig(id, viaInternet = false) {
+	private async _updateConfig(id: string, viaInternet = false) {
 		const configFilePath = `./config/custom-reply/${this.channelInstance.channel.id}/${id}.dat`
 
 		if (viaInternet) {
@@ -65,29 +66,29 @@ module.exports = class {
 		}
 	}
 
-	async _processReloadLocalCommand(args, msg) {
+	private async _processReloadLocalCommand(args: string[], msg: discordjs.Message) {
 		for (const id of this.configSources.keys()) {
 			try {
 				this._updateConfig(id)
 			} catch (e) {
 				console.error(e)
-				await this.#gc.send(msg, 'customReply.config.errorOnReloading', { id })
+				await this.gc.send(msg, 'customReply.config.errorOnReloading', { id })
 				continue
 			}
 		}
-		await this.#gc.send(msg, 'customReply.config.localReloadingComplete')
+		await this.gc.send(msg, 'customReply.config.localReloadingComplete')
 	}
 
-	async _processReloadCommand(args, msg) {
+	async _processReloadCommand(args: string[], msg: discordjs.Message) {
 		if (args.length < 1) {
-			await this.#gc.send(msg, 'customReply.config.haveToSpecifyId')
+			await this.gc.send(msg, 'customReply.config.haveToSpecifyId')
 			return
 		}
 
 		const id = args[0]
 
 		if (!this.configSources.has(id)) {
-			await this.#gc.send(msg, 'customReply.config.idThatDoesNotExist')
+			await this.gc.send(msg, 'customReply.config.idThatDoesNotExist')
 			return
 		}
 
@@ -95,11 +96,11 @@ module.exports = class {
 			await this._updateConfig(id, true)
 		} catch (e) {
 			console.error(e)
-			await this.#gc.send(msg, 'customReply.config.errorOnReloading', { id })
+			await this.gc.send(msg, 'customReply.config.errorOnReloading', { id })
 			return
 		}
 
-		await this.#gc.send(msg, 'customReply.config.reloadingComplete', { id })
+		await this.gc.send(msg, 'customReply.config.reloadingComplete', { id })
 	}
 
 	async writeSourcesJson() {
@@ -108,21 +109,21 @@ module.exports = class {
 			JSON.stringify([...this.configSources]))
 	}
 
-	async addCommand(args, msg) {
+	async addCommand(args: string[], msg: discordjs.Message) {
 		if (args.length < 2) {
-			await this.#gc.send(msg, 'customReply.config.haveToSpecifyIdAndUrl')
+			await this.gc.send(msg, 'customReply.config.haveToSpecifyIdAndUrl')
 			return
 		}
 
 		const [id, url] = args
 
 		if (!isValidId(id)) {
-			await this.#gc.send(msg, 'customReply.config.haveToSpecifyValidId')
+			await this.gc.send(msg, 'customReply.config.haveToSpecifyValidId')
 			return
 		}
 
 		if (!utils.isValidUrl(url)) {
-			await this.#gc.send(msg, 'customReply.config.haveToSpecifyValidUrl')
+			await this.gc.send(msg, 'customReply.config.haveToSpecifyValidUrl')
 			return
 		}
 
@@ -130,25 +131,25 @@ module.exports = class {
 		await this._updateConfig(id, true)
 		await this.writeSourcesJson()
 
-		await this.#gc.send(msg, 'customReply.config.addingComplete', { id })
+		await this.gc.send(msg, 'customReply.config.addingComplete', { id })
 	}
 
-	async listCommand(args, msg) {
-		await this.#gc.send(msg, 'customReply.config.list', {
+	async listCommand(args: string[], msg: discordjs.Message) {
+		await this.gc.send(msg, 'customReply.config.list', {
 			sources: [...this.configSources].map(([k, v]) => `${k}: ${v.source}`).join('\n')
 		})
 	}
 
-	async removeCommand(args, msg) {
+	async removeCommand(args: string[], msg: discordjs.Message) {
 		if (args.length < 1) {
-			await this.#gc.send(msg, 'customReply.config.haveToSpecifyId')
+			await this.gc.send(msg, 'customReply.config.haveToSpecifyId')
 			return
 		}
 
 		const id = args[0]
 
 		if (!this.configSources.has(id)) {
-			await this.#gc.send(msg, 'customReply.config.idThatDoesNotExist')
+			await this.gc.send(msg, 'customReply.config.idThatDoesNotExist')
 			return
 		}
 
@@ -156,10 +157,10 @@ module.exports = class {
 		this.configSources.delete(id)
 		await this.writeSourcesJson()
 
-		await this.#gc.send(msg, 'customReply.config.removingComplete', { id })
+		await this.gc.send(msg, 'customReply.config.removingComplete', { id })
 	}
 
-	async command(args, msg) {
+	async command(args: string[], msg: discordjs.Message) {
 		await utils.subCommandProxy({
 			reload: (a, m) => this._processReloadCommand(a, m),
 			reloadlocal: (a, m) => this._processReloadLocalCommand(a, m),

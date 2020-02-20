@@ -1,33 +1,37 @@
-const utils = require('../utils.js')
-const GlobalConfig = require('../global-config.js')
+import * as utils from '../utils'
 
-module.exports = class {
-	#features = new Map()
-	#gc = null
+import GlobalConfig from '../global-config'
+
+import * as discordjs from 'discord.js'
+import { Feature } from './feature'
+
+export default class {
+	private _features: Map<string, Feature> = new Map()
+	private _gc: GlobalConfig
 
 	constructor() {
-		this.#gc = new GlobalConfig(['./config/config-default.toml', './config/config.toml'])
+		this._gc = new GlobalConfig(['./config/config-default.toml', './config/config.toml'])
 	}
 
 	get gc() {
-		return this.#gc
+		return this._gc
 	}
 
 	async init() {
-		await this.#gc.init()
+		await this._gc.init()
 	}
 
 	async finalize() {
 		await this._eachAsync(x => x.finalize())
 	}
 
-	async registerFeature(id, feature) {
-		this.#features.set(id, feature)
+	async registerFeature(id: string, feature: Feature) {
+		this._features.set(id, feature)
 		await feature.init(this)
 	}
 
-	async _eachAsync(cb) {
-		return await utils.forEachAsyncOf(this.#features.values(), async feature => {
+	private async _eachAsync(cb: (x: Feature) => void) {
+		return await utils.forEachAsyncOf(this._features.values(), async feature => {
 			if (!feature.hasInitialized) {
 				return
 			}
@@ -35,16 +39,16 @@ module.exports = class {
 		})
 	}
 
-	async command(msg, name, args) {
+	async command(msg: discordjs.Message, name: string, args: string[]) {
 		await this._eachAsync(x => x.onCommand(msg, name, args))
 	}
 
-	async message(msg) {
+	async message(msg: discordjs.Message) {
 		await this._eachAsync(x => x.onMessage(msg))
 	}
 
 	// discord.js の message イベントからのみ呼ばれることを想定
-	async onMessage(msg) {
+	async onMessage(msg: discordjs.Message) {
 		if (msg.author.bot) {
 			return
 		}

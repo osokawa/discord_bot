@@ -1,8 +1,8 @@
-const { Client } = require('discord.js')
+import { Client } from 'discord.js'
 const client = new Client()
 
-const FeatureManager = require('./features/feature-manager.js')
-const features = require('../config/features.js')
+import FeatureManager from './features/feature-manager'
+import features from '../config/features'
 
 const featureManager = new FeatureManager()
 

@@ -1,6 +1,7 @@
-const lodash = require('lodash')
+import * as lodash from 'lodash'
+import * as discordjs from 'discord.js'
 
-exports.parseCommand = function (string) {
+export function parseCommand(string: string) {
 	const found = string.match(/^!([a-zA-Z_-]+)(\s+?.+)?$/)
 	if (!found) {
 		return null
@@ -14,16 +15,16 @@ exports.parseCommand = function (string) {
 	return { commandName, args }
 }
 
-exports.parseCommandArgs = function (argsToParse, optionsWithValue = [], minimumArgs = 0) {
+export function parseCommandArgs(argsToParse: string[], optionsWithValue: string[] = [], minimumArgs = 0) {
 	const args = []
-	const options = {}
+	const options: { [_: string]: string | boolean } = {}
 
 	for (let i = 0; i < argsToParse.length; i++) {
 		const arg = argsToParse[i]
 
 		if (arg !== '--' && arg.startsWith('--')) {
 			let optName = arg.slice(2)
-			let optValue = true
+			let optValue: string | boolean = true
 
 			const equalIndex = arg.indexOf('=')
 			if (equalIndex !== -1) {
@@ -89,7 +90,7 @@ exports.parseCommandArgs = function (argsToParse, optionsWithValue = [], minimum
 	return {args, options}
 }
 
-exports.getOption = function (options, keys, defaultValue = false) {
+export function getOption(options: { [_: string]: string | boolean }, keys: string[], defaultValue: any = false): string | boolean {
 	for (const key of keys) {
 		if (key in options) {
 			return options[key]
@@ -99,7 +100,7 @@ exports.getOption = function (options, keys, defaultValue = false) {
 	return defaultValue
 }
 
-exports.delay = function (ms) {
+export function delay(ms: number): Promise<void> {
 	return new Promise(resolve => {
 		setTimeout(() => {
 			resolve()
@@ -107,7 +108,7 @@ exports.delay = function (ms) {
 	})
 }
 
-function weightedRandom(weights) {
+export function weightedRandom(weights: number[]): number {
 	if (!Array.isArray(weights) || weights.length == 0) {
 		throw new TypeError('invalid argument')
 	}
@@ -119,10 +120,11 @@ function weightedRandom(weights) {
 			return i - 1
 		}
 	}
-}
-exports.weightedRandom = weightedRandom
 
-exports.randomPick = function (array) {
+	throw new Error('おかしい')
+}
+
+export function randomPick<T>(array: T | T[]): T {
 	if (!Array.isArray(array)) {
 		return array
 	}
@@ -131,7 +133,10 @@ exports.randomPick = function (array) {
 	return array[weightedRandom(weights)]
 }
 
-exports.subCommandProxy = async function (table, [subcommand, ...args], msg) {
+export async function subCommandProxy(
+	table: { [_: string]: (args: string[], msg: discordjs.Message) => Promise<void> },
+	[subcommand, ...args]: string[],
+	msg: discordjs.Message): Promise<void> {
 	const validSubCommands = Object.keys(table).join(' ')
 	if (!subcommand) {
 		msg.channel.send(`サブコマンドを指定して欲しいロボ: ${validSubCommands}`)
@@ -147,20 +152,20 @@ exports.subCommandProxy = async function (table, [subcommand, ...args], msg) {
 }
 
 
-exports.replaceEmoji = function (text, emojis) {
+export function replaceEmoji(text: string, emojis: discordjs.Collection<discordjs.Snowflake, discordjs.Emoji>): string {
 	return text.replace(/:(\w+):/g, (match, emojiName) => {
 		const foundEmoji = emojis.find(x => x.name === emojiName)
 		return foundEmoji ? foundEmoji.toString() : match
 	})
 }
 
-exports.isValidUrl = function (url) {
+export function isValidUrl(url: string): boolean {
 	const validUrlRegExp = /^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([-.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$/
 	return url.match(validUrlRegExp) ? true : false
 }
 
-exports.forEachAsyncOf = async function (arr, doWithX) {
-	const errors = []
+export async function forEachAsyncOf<T>(arr: Iterable<T>, doWithX: (x: T) => Promise<void>): Promise<void> {
+	const errors: any[] = []
 
 	await Promise.all(Array.from(arr, x => {
 		return (async () => {

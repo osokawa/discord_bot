@@ -1,18 +1,25 @@
-const { Attachment } = require('discord.js')
-const utils = require('../../utils.js')
-const fs = require('fs').promises
-const { Images, isValidImageId } = require('./images.js')
-const Config = require('./config.js')
-const { Feature } = require('../feature.js')
+import * as discordjs from 'discord.js'
+import * as utils from '../../utils'
+import { promises as fs } from 'fs'
+import { Images, isValidImageId } from './images'
+import Config from './config'
+import { Feature } from '../feature'
+import GlobalConfig from '../../global-config'
 
-class CustomReply {
-	#gc
+type Response = {
+	action: string
+	text: string
+	pattern: string
+	image: string
+	reply?: boolean
+}
 
-	constructor(feature, channel, gc) {
-		this.feature = feature
-		this.channel = channel
-		this.#gc = gc
-		this.initialized = false
+export class CustomReply {
+	private initialized = false
+	private images: Images
+	private config: Config
+
+	constructor(private feature: FeatureCustomReply, public channel: discordjs.Channel, private readonly gc: GlobalConfig) {
 		this.images = new Images(this, gc)
 		this.config = new Config(this, gc)
 	}
@@ -23,13 +30,13 @@ class CustomReply {
 		this.initialized = true
 	}
 
-	async _processPickedResponse(msg, response) {
+	async _processPickedResponse(msg: discordjs.Message, response: Response) {
 		if (response.action === 'do-nothing') {
 			return
 		}
 
 		let text = response.text || ''
-		let options = {}
+		let options: discordjs.MessageOptions = {}
 
 		if (response.action === 'gacha') {
 			let list = this.images.images
@@ -38,15 +45,15 @@ class CustomReply {
 			}
 
 			if (list.length === 0) {
-				await this.#gc.send(msg, 'customReply.gachaImageNotFound')
+				await this.gc.send(msg, 'customReply.gachaImageNotFound')
 				return
 			}
-			options.file = new Attachment(this.images.getImagePathById(utils.randomPick(list)))
+			options.files = [new discordjs.Attachment(this.images.getImagePathById(utils.randomPick(list)))]
 		} else {
 			const imageId = response.image
 			if (imageId) {
 				if (!isValidImageId(imageId)) {
-					await this.#gc.send(msg, 'customReply.invalidImageIdInResponse', { imageId })
+					await this.gc.send(msg, 'customReply.invalidImageIdInResponse', { imageId })
 					console.log(`無効な画像ID ${imageId}`)
 					return
 				}
@@ -54,11 +61,11 @@ class CustomReply {
 				try {
 					await fs.access(path)
 				} catch (_) {
-					await this.#gc.send(msg, 'customReply.imageIdThatDoesNotExist', { imageId })
+					await this.gc.send(msg, 'customReply.imageIdThatDoesNotExist', { imageId })
 					return
 				}
-				const attachment = new Attachment(path)
-				options.file = attachment
+				const attachment = new discordjs.Attachment(path)
+				options.files = [attachment]
 			}
 		}
 
@@ -70,7 +77,7 @@ class CustomReply {
 		}
 	}
 
-	async _processCustomResponse(msg) {
+	async _processCustomResponse(msg: discordjs.Message) {
 		for (const [, v] of this.config.config) {
 			for (const content of v.contents) {
 				if (msg.content.match(new RegExp(content.target))) {
@@ -81,7 +88,7 @@ class CustomReply {
 		}
 	}
 
-	async onCommand(msg, name, args) {
+	async onCommand(msg: discordjs.Message, name: string, args: string[]) {
 		if (name !== this.feature.cmdname) {
 			return
 		}
@@ -92,7 +99,7 @@ class CustomReply {
 		}, args, msg)
 	}
 
-	async onMessage(msg) {
+	async onMessage(msg: discordjs.Message) {
 		if (msg.author.bot) {
 			return
 		}
@@ -107,27 +114,22 @@ class CustomReply {
 	}
 }
 
-module.exports = class extends Feature {
-	#gc
-
-	constructor(cmdname) {
+export class FeatureCustomReply extends Feature {
+	constructor(public cmdname: string) {
 		super()
-		this.cmdname = cmdname
 	}
 
 	async initImpl() {
 		this.registerChannel(this)
 		this.registerCommand(this)
-
-		this.#gc = this.manager.gc
 	}
 
-	async onCommand(msg, name, args) {
-		await this.dispatchToChannels(msg.channel, x => x.onCommand(msg, name, args))
+	async onCommand(msg: discordjs.Message, name: string, args: string[]) {
+		await this.dispatchToChannels(msg.channel, (x: CustomReply) => x.onCommand(msg, name, args))
 	}
 
-	createChannelInstance(channel) {
-		const client = new CustomReply(this, channel, this.#gc)
+	createChannelInstance(channel: discordjs.Channel) {
+		const client = new CustomReply(this, channel, this.gc)
 		client.init()
 		return client
 	}
