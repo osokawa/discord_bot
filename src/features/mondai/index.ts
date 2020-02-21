@@ -1,16 +1,29 @@
 import { promises as fs } from 'fs'
 import * as utils from '../../utils'
 import TOML from '@iarna/toml'
-import Game from './game'
+import { Game, GameOption } from './game'
 
 import { Feature, ChannelInstance } from '../feature'
 
 import * as discordjs from 'discord.js'
 
+export type MondaiConfig = {
+	options: {
+		type: 'video' | 'music'
+		surrenderPattern: string
+	}
+	episodes: {
+		filename: string
+		title: string
+		pattern: string
+		excludeRange?: string
+	}[]
+}
+
 export class Mondai extends ChannelInstance {
 	private game: Game | undefined
 
-	constructor(public feature: FeatureMondai, public channel: discordjs.TextChannel | discordjs.GroupDMChannel | discordjs.DMChannel) {
+	constructor(public feature: FeatureMondai, public channel: discordjs.TextChannel | discordjs.GroupDMChannel | discordjs.DMChannel, public config: MondaiConfig) {
 		super(feature)
 	}
 
@@ -48,7 +61,7 @@ export class Mondai extends ChannelInstance {
 			return
 		}
 
-		const validModes = this.feature.config.options.type === 'music'
+		const validModes = this.config.options.type === 'music'
 			? ['music', 'intro']
 			: ['image', 'mosaic', 'audio']
 
@@ -63,17 +76,17 @@ export class Mondai extends ChannelInstance {
 		}
 
 		try {
-			const opts: { repeat?: any; life?: any } = {
-				repeat: utils.getOption(options, ['repeat', 'r'])
+			const opts: GameOption = {
+				repeat: utils.getOption(options, ['repeat', 'r']) as boolean
 			}
 
 			const life = utils.getOption(options, ['life', 'l'], null)
-			if (life) {
+			if (life !== null) {
 				opts.repeat = true
 				opts.life = parseInt(life as string, 10)
 			}
 
-			this.game = new Game(this, this.gc, mode, opts as any)
+			this.game = new Game(this, this.gc, mode, opts)
 			await this.game.init()
 		} catch (e) {
 			this.game = undefined
@@ -99,7 +112,7 @@ export class Mondai extends ChannelInstance {
 }
 
 export class FeatureMondai extends Feature {
-	config: any | undefined
+	private config: MondaiConfig | undefined
 
 	constructor(public cmdname: string, private configPath: string) {
 		super()
@@ -111,7 +124,7 @@ export class FeatureMondai extends Feature {
 
 		const toml = await fs.readFile(this.configPath, 'utf-8')
 		const parsed = await TOML.parse.async(toml)
-		this.config = parsed
+		this.config = parsed as MondaiConfig
 	}
 
 	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
@@ -119,6 +132,10 @@ export class FeatureMondai extends Feature {
 	}
 
 	createChannelInstance(channel: utils.LikeTextChannel): ChannelInstance {
-		return new Mondai(this, channel)
+		if (this.config === undefined) {
+			throw 'なんかおかしい'
+		}
+
+		return new Mondai(this, channel, this.config)
 	}
 }

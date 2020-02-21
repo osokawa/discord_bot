@@ -95,14 +95,20 @@ export function parseCommandArgs(
 	return {args, options}
 }
 
-export function getOption(options: { [_: string]: string | boolean }, keys: string[], defaultValue: any = false): string | boolean {
+export function getOption(options: { [_: string]: string | boolean }, keys: string[]): string | boolean
+export function getOption<T>(options: { [_: string]: string | boolean }, keys: string[], defaultValue: T): string | boolean | T
+export function getOption<T>(options: { [_: string]: string | boolean }, keys: string[], defaultValue?: T): T | string | boolean {
 	for (const key of keys) {
 		if (key in options) {
 			return options[key]
 		}
 	}
 
-	return defaultValue
+	if (defaultValue === undefined) {
+		return false
+	} else {
+		return defaultValue
+	}
 }
 
 export function delay(ms: number): Promise<void> {

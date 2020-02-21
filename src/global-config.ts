@@ -19,11 +19,11 @@ export default class {
 		}
 	}
 
-	async send(msg: discordjs.Message, key: string, args = {}, options = {}): Promise<discordjs.Message | discordjs.Message[]> {
+	async send(msg: discordjs.Message, key: string, args: any = {}, options: discordjs.MessageOptions = {}): Promise<discordjs.Message | discordjs.Message[]> {
 		return await this.sendToChannel(msg.channel, key, args, options)
 	}
 
-	async sendToChannel(channel: utils.LikeTextChannel, key: string, args = {}, options = {}): Promise<discordjs.Message | discordjs.Message[]> {
+	async sendToChannel(channel: utils.LikeTextChannel, key: string, args: any = {}, options: discordjs.MessageOptions = {}): Promise<discordjs.Message | discordjs.Message[]> {
 		let template = lodash.get(this.config.message, key)
 		if (template === undefined) {
 			template = key

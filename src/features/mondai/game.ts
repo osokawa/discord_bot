@@ -5,12 +5,12 @@ import { promises as fs } from 'fs'
 import * as path from 'path'
 import * as utils from '../../utils'
 import GlobalConfig from '../../global-config'
-import { FeatureMondai, Mondai } from '.'
+import { FeatureMondai, Mondai, MondaiConfig } from '.'
 import { generateImageMap } from './image-map'
 
-type GameOption = {
-	repeat: boolean
-	life: number
+export type GameOption = {
+	repeat?: boolean
+	life?: number
 }
 
 type GameMode = string
@@ -51,7 +51,7 @@ type Answer = {
 	pattern: string
 }
 
-export default class Game {
+export class Game {
 	private _incorrectImageLog: { filename: string; answer: Answer }[] = []
 	private answer: Answer | undefined
 	private incorrectCount = 0
@@ -64,8 +64,16 @@ export default class Game {
 		this.feature = channelInstance.feature
 	}
 
+	private get config(): MondaiConfig {
+		return this.channelInstance.config
+	}
+
+	private get isRepeat(): boolean {
+		return this.options.repeat === undefined ? false : this.options.repeat
+	}
+
 	private get incorrectLimit(): number {
-		return this.options.life
+		return this.options.life === undefined ? 3 : this.options.life
 	}
 
 	private get _isAudioMode(): boolean {
@@ -89,7 +97,7 @@ export default class Game {
 			throw 'なんかおかしい'
 		}
 
-		const episode = utils.randomPick(this.feature.config.episodes)
+		const episode = utils.randomPick(this.config.episodes)
 		const outputPath = this._getTmpPath(this._isAudioMode ? 'audio.mp3' : 'image.jpg')
 		const mosaicOriginalPath = path.join(this.tmpDir, 'original.jpg')
 		const options: { [_: string]: string } = {}
@@ -124,7 +132,7 @@ export default class Game {
 	}
 
 	async _postResultMessage(msg: discordjs.Message, key: string, ans: Answer, title: string): Promise<void> {
-		const options: { [_: string]: any } = {}
+		const options: discordjs.MessageOptions = {}
 		if (this._isMosaicMode) {
 			options.files = [new discordjs.Attachment(this._getTmpPath('original.jpg'))]
 		}
@@ -140,7 +148,7 @@ export default class Game {
 		if (this.answer === undefined) {
 			throw 'なんかおかしい'
 		}
-		if (!this._isAudioMode && this.options.repeat) {
+		if (!this._isAudioMode && this.isRepeat) {
 			const filename = this._getTmpPath(`incorrect${this.incorrectCount}.jpg`)
 			await fs.copyFile(this._getTmpPath('image.jpg'), filename)
 			this._incorrectImageLog.push({ filename, answer: this.answer })
@@ -160,7 +168,7 @@ export default class Game {
 		if (correctMatch && correctMatch[0] === text) {
 			await this._postResultMessage(msg, 'correct', ans, title)
 
-			if (this.options.repeat) {
+			if (this.isRepeat) {
 				this.correctCount++
 				await this._postMondai()
 				return true
@@ -170,18 +178,18 @@ export default class Game {
 		}
 
 		// 降参
-		if (new RegExp(this.feature.config.options.surrenderPattern, 'i').exec(text)) {
+		if (new RegExp(this.config.options.surrenderPattern, 'i').exec(text)) {
 			this.incorrectCount++
 			this._pushIncorrectImageLog()
 
-			if (this.options.repeat && this.incorrectCount == this.incorrectLimit) {
+			if (this.isRepeat && this.incorrectCount == this.incorrectLimit) {
 				await this._postResultMessage(msg, 'reachedIncorrectLimit', ans, title)
 				return false
 			}
 
 			await this._postResultMessage(msg, 'surrender', ans, title)
 
-			if (this.options.repeat) {
+			if (this.isRepeat) {
 				await this._postMondai()
 				return true
 			}
@@ -190,7 +198,7 @@ export default class Game {
 		}
 
 		// 不正解
-		for (const episode of this.feature.config.episodes) {
+		for (const episode of this.config.episodes) {
 			const incorrectMatch = new RegExp(episode.pattern, 'i').exec(text)
 			if (incorrectMatch && incorrectMatch[0] === text) {
 				this.incorrectCount++
@@ -223,7 +231,7 @@ export default class Game {
 	}
 
 	async finalize(): Promise<void> {
-		if (this.options.repeat) {
+		if (this.isRepeat) {
 			await this._gc.sendToChannel(this.channelInstance.channel, 'mondai.repeatResult', { correctCount: this.correctCount })
 			if (!this._isAudioMode && 10 <= this.correctCount) {
 				const buf = await generateImageMap(1920, 1080, this._incorrectImageLog.map(x => x.filename))
