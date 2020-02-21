@@ -23,6 +23,8 @@ function generateMondaiImage(mode: string, inPath: string, outPath: string, opts
 	}
 
 	return new Promise((resolve, reject) => {
+		// TODO: ReadonlyArray<string> に代入出来ない?
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const args: ReadonlyArray<string> = [...optArgs, mode, inPath, outPath] as any
 		execFile('./tools/mondai.rb', args, {}, (error: Error | null, stdout: string | Buffer) => {
 			if (error) {

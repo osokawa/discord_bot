@@ -24,7 +24,7 @@ export async function generateImageMap(width: number, height: number, files: str
 	const { x, y } = calcDivisionNumber(files.length)
 
 	const promise: Promise<Jimp> = new Promise((resolve, reject) => {
-		new Jimp(width, height, '#FFFFFF', (err: any, image: Jimp) => {
+		new Jimp(width, height, '#FFFFFF', (err, image) => {
 			if (err) { reject(err) }
 			resolve(image)
 		})

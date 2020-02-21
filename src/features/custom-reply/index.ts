@@ -122,6 +122,7 @@ export class FeatureCustomReply extends Feature {
 	async initImpl(): Promise<void> {
 		this.registerChannel(this)
 		this.registerCommand(this)
+		return Promise.resolve()
 	}
 
 	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {

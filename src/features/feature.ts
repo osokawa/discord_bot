@@ -95,13 +95,18 @@ export abstract class Feature {
 				instancesMap.set(id, new Map())
 			}
 
-			const mapOfId = instancesMap.get(id)!
+			const mapOfId = instancesMap.get(id)
+			if (mapOfId === undefined) {
+				utils.unreachable()
+			}
 			if (!mapOfId.has(idx)) {
 				mapOfId.set(idx, createInstance(elm))
 			}
 		})
 
-		return Array.from(instancesMap.get(id)!.values())
+		const tmp = instancesMap.get(id)
+		if (tmp === undefined) { utils.unreachable() }
+		return Array.from(tmp.values())
 	}
 
 	async dispatchToChannels(channel: utils.LikeTextChannel, doWithInstance: (i: ChannelInstance) => Promise<void>): Promise<void> {
@@ -128,7 +133,7 @@ export abstract class Feature {
 		await utils.forEachAsyncOf(channelInstances, doWithInstance)
 	}
 
-	async dispatchToCommands(doWithInstance: (i: any) => Promise<void>): Promise<void> {
+	async dispatchToCommands(doWithInstance: (i: Command) => Promise<void>): Promise<void> {
 		await utils.forEachAsyncOf(this._commands, doWithInstance)
 	}
 

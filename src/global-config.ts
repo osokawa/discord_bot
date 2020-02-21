@@ -4,9 +4,19 @@ import TOML from '@iarna/toml'
 import * as lodash from 'lodash'
 import * as discordjs from 'discord.js'
 
+type Message = string | (string | { text: string; weight?: number })[]
+
+type Messages = {
+	[_: string]: Message | Messages
+}
+
+type Config = {
+	message: { [_: string]: Messages }
+}
+
 export default class {
-	private config: any = {}
-	private templateCache = new Map()
+	private config: Config | undefined
+	private templateCache: Map<string, lodash.TemplateExecutor> = new Map()
 
 	constructor(private paths: string[]) {
 	}
@@ -19,25 +29,31 @@ export default class {
 		}
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	async send(msg: discordjs.Message, key: string, args: any = {}, options: discordjs.MessageOptions = {}): Promise<discordjs.Message | discordjs.Message[]> {
 		return await this.sendToChannel(msg.channel, key, args, options)
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	async sendToChannel(channel: utils.LikeTextChannel, key: string, args: any = {}, options: discordjs.MessageOptions = {}): Promise<discordjs.Message | discordjs.Message[]> {
-		let template = lodash.get(this.config.message, key)
-		if (template === undefined) {
-			template = key
+		let templateText = key
+		if (this.config !== undefined) {
+			const value: Message | Messages | undefined = lodash.get(this.config.message, key)
+			if (typeof value === 'string') {
+				templateText = value
+			} else if (value instanceof Array) {
+				const picked = utils.randomPick(value)
+				if (picked instanceof Object) {
+					templateText = picked.text
+				}
+			}
 		}
 
-		template = utils.randomPick(template)
-		if (lodash.isString(template)) {
-			template = { text: template }
+		if (!this.templateCache.has(templateText)) {
+			this.templateCache.set(templateText, lodash.template(templateText))
 		}
-
-		if (!this.templateCache.has(template.text)) {
-			this.templateCache.set(template.text, lodash.template(template.text))
-		}
-		const compiledTemplate = this.templateCache.get(template.text)
+		const compiledTemplate = this.templateCache.get(templateText)
+		if (compiledTemplate === undefined) { utils.unreachable() }
 		let text = compiledTemplate(args)
 		if ('guild' in channel) {
 			text = utils.replaceEmoji(text, channel.guild.emojis)

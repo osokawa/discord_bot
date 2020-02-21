@@ -1,6 +1,10 @@
 import * as lodash from 'lodash'
 import * as discordjs from 'discord.js'
 
+export function unreachable(): never {
+	throw Error('This must never happen!')
+}
+
 export function parseCommand(string: string): { commandName: string; args: string[] } | undefined {
 	const found = /^!([a-zA-Z_-]+)(\s+?.+)?$/.exec(string)
 	if (!found) {
@@ -120,7 +124,7 @@ export function delay(ms: number): Promise<void> {
 }
 
 export function weightedRandom(weights: number[]): number {
-	if (!Array.isArray(weights) || weights.length == 0) {
+	if (weights.length == 0) {
 		throw new TypeError('invalid argument')
 	}
 
@@ -132,7 +136,7 @@ export function weightedRandom(weights: number[]): number {
 		}
 	}
 
-	throw new Error('おかしい')
+	unreachable()
 }
 
 export function randomPick<T>(array: T | T[]): T {
@@ -176,6 +180,7 @@ export function isValidUrl(url: string): boolean {
 }
 
 export async function forEachAsyncOf<T>(arr: Iterable<T>, doWithX: (x: T) => Promise<void>): Promise<void> {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const errors: any[] = []
 
 	await Promise.all(Array.from(arr, x => {

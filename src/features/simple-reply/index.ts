@@ -21,6 +21,7 @@ class SimpleReply extends ChannelInstance {
 export class FeatureSimpleReply extends Feature {
 	async initImpl(): Promise<void> {
 		this.registerChannel(this)
+		return Promise.resolve()
 	}
 
 	createChannelInstance(): ChannelInstance {

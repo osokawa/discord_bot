@@ -8,6 +8,7 @@ export default class extends Feature {
 
 	async initImpl(): Promise<void> {
 		this.registerCommand(this)
+		return Promise.resolve()
 	}
 
 	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
