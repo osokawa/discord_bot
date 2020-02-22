@@ -1,9 +1,14 @@
-const lodash = require('lodash')
+import * as lodash from 'lodash'
+import * as discordjs from 'discord.js'
 
-exports.parseCommand = function (string) {
-	const found = string.match(/^!([a-zA-Z_-]+)(\s+?.+)?$/)
+export function unreachable(): never {
+	throw Error('This must never happen!')
+}
+
+export function parseCommand(string: string): { commandName: string; args: string[] } | undefined {
+	const found = /^!([a-zA-Z_-]+)(\s+?.+)?$/.exec(string)
 	if (!found) {
-		return null
+		return
 	}
 
 	const commandName = found[1].toLowerCase()
@@ -14,16 +19,20 @@ exports.parseCommand = function (string) {
 	return { commandName, args }
 }
 
-exports.parseCommandArgs = function (argsToParse, optionsWithValue = [], minimumArgs = 0) {
+export function parseCommandArgs(
+	argsToParse: string[],
+	optionsWithValue: string[] = [],
+	minimumArgs = 0
+): { args: string[]; options: { [_: string]: string | boolean } } {
 	const args = []
-	const options = {}
+	const options: { [_: string]: string | boolean } = {}
 
 	for (let i = 0; i < argsToParse.length; i++) {
 		const arg = argsToParse[i]
 
 		if (arg !== '--' && arg.startsWith('--')) {
 			let optName = arg.slice(2)
-			let optValue = true
+			let optValue: string | boolean = true
 
 			const equalIndex = arg.indexOf('=')
 			if (equalIndex !== -1) {
@@ -86,20 +95,39 @@ exports.parseCommandArgs = function (argsToParse, optionsWithValue = [], minimum
 		throw '引数の数が足りません'
 	}
 
-	return {args, options}
+	return { args, options }
 }
 
-exports.getOption = function (options, keys, defaultValue = false) {
+export function getOption(
+	options: { [_: string]: string | boolean },
+	keys: string[]
+): string | boolean
+
+export function getOption<T>(
+	options: { [_: string]: string | boolean },
+	keys: string[],
+	defaultValue: T
+): string | boolean | T
+
+export function getOption<T>(
+	options: { [_: string]: string | boolean },
+	keys: string[],
+	defaultValue?: T
+): T | string | boolean {
 	for (const key of keys) {
 		if (key in options) {
 			return options[key]
 		}
 	}
 
-	return defaultValue
+	if (defaultValue === undefined) {
+		return false
+	} else {
+		return defaultValue
+	}
 }
 
-exports.delay = function (ms) {
+export function delay(ms: number): Promise<void> {
 	return new Promise(resolve => {
 		setTimeout(() => {
 			resolve()
@@ -107,8 +135,8 @@ exports.delay = function (ms) {
 	})
 }
 
-function weightedRandom(weights) {
-	if (!Array.isArray(weights) || weights.length == 0) {
+export function weightedRandom(weights: number[]): number {
+	if (weights.length == 0) {
 		throw new TypeError('invalid argument')
 	}
 
@@ -119,10 +147,11 @@ function weightedRandom(weights) {
 			return i - 1
 		}
 	}
-}
-exports.weightedRandom = weightedRandom
 
-exports.randomPick = function (array) {
+	unreachable()
+}
+
+export function randomPick<T>(array: T | T[]): T {
 	if (!Array.isArray(array)) {
 		return array
 	}
@@ -131,7 +160,13 @@ exports.randomPick = function (array) {
 	return array[weightedRandom(weights)]
 }
 
-exports.subCommandProxy = async function (table, [subcommand, ...args], msg) {
+export async function subCommandProxy(
+	table: {
+		[_: string]: (args: string[], msg: discordjs.Message) => Promise<void>
+	},
+	[subcommand, ...args]: string[],
+	msg: discordjs.Message
+): Promise<void> {
 	const validSubCommands = Object.keys(table).join(' ')
 	if (!subcommand) {
 		msg.channel.send(`サブコマンドを指定して欲しいロボ: ${validSubCommands}`)
@@ -146,33 +181,43 @@ exports.subCommandProxy = async function (table, [subcommand, ...args], msg) {
 	}
 }
 
-
-exports.replaceEmoji = function (text, emojis) {
+export function replaceEmoji(
+	text: string,
+	emojis: discordjs.Collection<discordjs.Snowflake, discordjs.Emoji>
+): string {
 	return text.replace(/:(\w+):/g, (match, emojiName) => {
 		const foundEmoji = emojis.find(x => x.name === emojiName)
 		return foundEmoji ? foundEmoji.toString() : match
 	})
 }
 
-exports.isValidUrl = function (url) {
+export function isValidUrl(url: string): boolean {
 	const validUrlRegExp = /^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([-.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$/
-	return url.match(validUrlRegExp) ? true : false
+	return validUrlRegExp.exec(url) ? true : false
 }
 
-exports.forEachAsyncOf = async function (arr, doWithX) {
-	const errors = []
+export async function forEachAsyncOf<T>(
+	arr: Iterable<T>,
+	doWithX: (x: T) => Promise<void>
+): Promise<void> {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const errors: any[] = []
 
-	await Promise.all(Array.from(arr, x => {
-		return (async () => {
-			try {
-				await doWithX(x)
-			} catch (e) {
-				errors.push(e)
-			}
-		})()
-	}))
+	await Promise.all(
+		Array.from(arr, x => {
+			return (async (): Promise<void> => {
+				try {
+					await doWithX(x)
+				} catch (e) {
+					errors.push(e)
+				}
+			})()
+		})
+	)
 
 	if (errors.length !== 0) {
 		throw errors
 	}
 }
+
+export type LikeTextChannel = discordjs.TextChannel | discordjs.GroupDMChannel | discordjs.DMChannel
