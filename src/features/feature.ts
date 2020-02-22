@@ -30,11 +30,7 @@ export interface Guild {
 }
 
 export interface Command {
-	onCommand(
-		msg: discordjs.Message,
-		name: string,
-		args: string[]
-	): Promise<void>
+	onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void>
 }
 
 export abstract class Feature {
@@ -43,10 +39,7 @@ export abstract class Feature {
 	private _channels: Channel[] = []
 
 	private _guildInstances: Map<string, Map<number, GuildInstance>> = new Map()
-	private _channelInstances: Map<
-		string,
-		Map<number, ChannelInstance>
-	> = new Map()
+	private _channelInstances: Map<string, Map<number, ChannelInstance>> = new Map()
 
 	private _hasInitialized = false
 	private _manager: FeatureManager | undefined
@@ -150,17 +143,11 @@ export abstract class Feature {
 		await utils.forEachAsyncOf(channelInstances, doWithInstance)
 	}
 
-	async dispatchToCommands(
-		doWithInstance: (i: Command) => Promise<void>
-	): Promise<void> {
+	async dispatchToCommands(doWithInstance: (i: Command) => Promise<void>): Promise<void> {
 		await utils.forEachAsyncOf(this._commands, doWithInstance)
 	}
 
-	async onCommand(
-		msg: discordjs.Message,
-		name: string,
-		args: string[]
-	): Promise<void> {
+	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
 		await this.dispatchToCommands(x => x.onCommand(msg, name, args))
 	}
 

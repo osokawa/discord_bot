@@ -42,21 +42,14 @@ export class Mondai extends ChannelInstance {
 		await instance.finalize()
 	}
 
-	public async onCommand(
-		msg: discordjs.Message,
-		name: string,
-		rawArgs: string[]
-	): Promise<void> {
+	public async onCommand(msg: discordjs.Message, name: string, rawArgs: string[]): Promise<void> {
 		if (name !== this.feature.cmdname) {
 			return
 		}
 
 		let args, options
 		try {
-			;({ args, options } = utils.parseCommandArgs(rawArgs, [
-				'life',
-				'l',
-			]))
+			;({ args, options } = utils.parseCommandArgs(rawArgs, ['life', 'l']))
 		} catch (e) {
 			await this.gc.send(msg, 'mondai.invalidCommand', { e })
 			return
@@ -75,9 +68,7 @@ export class Mondai extends ChannelInstance {
 		}
 
 		const validModes =
-			this.config.options.type === 'music'
-				? ['music', 'intro']
-				: ['image', 'mosaic', 'audio']
+			this.config.options.type === 'music' ? ['music', 'intro'] : ['image', 'mosaic', 'audio']
 
 		let mode = validModes[0]
 		if (1 <= args.length) {
@@ -141,14 +132,8 @@ export class FeatureMondai extends Feature {
 		this.config = parsed as MondaiConfig
 	}
 
-	async onCommand(
-		msg: discordjs.Message,
-		name: string,
-		args: string[]
-	): Promise<void> {
-		await this.dispatchToChannels(msg.channel, x =>
-			(x as Mondai).onCommand(msg, name, args)
-		)
+	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
+		await this.dispatchToChannels(msg.channel, x => (x as Mondai).onCommand(msg, name, args))
 	}
 
 	createChannelInstance(channel: utils.LikeTextChannel): ChannelInstance {

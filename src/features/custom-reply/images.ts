@@ -15,10 +15,7 @@ export class Images {
 	private state = 'free'
 	private imageName: string | undefined
 
-	constructor(
-		private channelInstance: CustomReply,
-		private gc: GlobalConfig
-	) {}
+	constructor(private channelInstance: CustomReply, private gc: GlobalConfig) {}
 
 	async init(): Promise<void> {
 		this._images = await fs.readdir(
@@ -47,10 +44,7 @@ export class Images {
 		}
 
 		if (!isValidImageId(args[0])) {
-			await this.gc.send(
-				msg,
-				'customReply.images.haveToSpecifyValidIdAndSorry'
-			)
+			await this.gc.send(msg, 'customReply.images.haveToSpecifyValidIdAndSorry')
 			return
 		}
 
@@ -59,16 +53,10 @@ export class Images {
 		await this.gc.send(msg, 'customReply.images.readyToUpload')
 	}
 
-	async listCommand(
-		rawArgs: string[],
-		msg: discordjs.Message
-	): Promise<void> {
+	async listCommand(rawArgs: string[], msg: discordjs.Message): Promise<void> {
 		let args, options: { [_: string]: string | boolean }
 		try {
-			;({ args, options } = utils.parseCommandArgs(rawArgs, [
-				's',
-				'search',
-			]))
+			;({ args, options } = utils.parseCommandArgs(rawArgs, ['s', 'search']))
 		} catch (e) {
 			await this.gc.send(msg, 'customReply.images.listInvalidCommand', {
 				e,
@@ -124,10 +112,7 @@ export class Images {
 
 		const index = this._images.indexOf(args[0])
 		if (index === -1) {
-			await this.gc.send(
-				msg,
-				'customReply.images.imageIdThatDoesNotExist'
-			)
+			await this.gc.send(msg, 'customReply.images.imageIdThatDoesNotExist')
 			return
 		}
 
@@ -137,10 +122,7 @@ export class Images {
 		await this.gc.send(msg, 'customReply.images.removingComplete')
 	}
 
-	async previewCommand(
-		args: string[],
-		msg: discordjs.Message
-	): Promise<void> {
+	async previewCommand(args: string[], msg: discordjs.Message): Promise<void> {
 		if (args.length < 1) {
 			await this.gc.send(msg, 'customReply.images.haveToSpecifyId')
 			return
@@ -152,10 +134,7 @@ export class Images {
 		}
 
 		if (!this._images.includes(args[0])) {
-			await this.gc.send(
-				msg,
-				'customReply.images.imageIdThatDoesNotExist'
-			)
+			await this.gc.send(msg, 'customReply.images.imageIdThatDoesNotExist')
 			return
 		}
 
@@ -164,17 +143,12 @@ export class Images {
 			'customReply.images.sendPreview',
 			{},
 			{
-				files: [
-					new discordjs.Attachment(this.getImagePathById(args[0])),
-				],
+				files: [new discordjs.Attachment(this.getImagePathById(args[0]))],
 			}
 		)
 	}
 
-	async reloadLocalCommand(
-		args: string[],
-		msg: discordjs.Message
-	): Promise<void> {
+	async reloadLocalCommand(args: string[], msg: discordjs.Message): Promise<void> {
 		await this.init()
 		await this.gc.send(msg, 'customReply.images.localReloadingComplete')
 	}
@@ -209,10 +183,7 @@ export class Images {
 				throw 'なんかおかしい'
 			}
 
-			await fs.writeFile(
-				this.getImagePathById(this.imageName),
-				Buffer.from(res.data)
-			)
+			await fs.writeFile(this.getImagePathById(this.imageName), Buffer.from(res.data))
 			if (!this._images.includes(this.imageName)) {
 				this._images.push(this.imageName)
 				this._images.sort()

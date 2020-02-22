@@ -47,10 +47,7 @@ export default class {
 	): Promise<discordjs.Message | discordjs.Message[]> {
 		let templateText = key
 		if (this.config !== undefined) {
-			const value: Message | Messages | undefined = lodash.get(
-				this.config.message,
-				key
-			)
+			const value: Message | Messages | undefined = lodash.get(this.config.message, key)
 			if (typeof value === 'string') {
 				templateText = value
 			} else if (value instanceof Array) {

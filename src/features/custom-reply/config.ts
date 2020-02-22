@@ -20,21 +20,13 @@ export default class {
 	public config = new Map()
 	private configSources = new Map()
 
-	constructor(
-		private channelInstance: CustomReply,
-		private gc: GlobalConfig
-	) {}
+	constructor(private channelInstance: CustomReply, private gc: GlobalConfig) {}
 
-	private async _updateConfig(
-		id: string,
-		viaInternet = false
-	): Promise<void> {
+	private async _updateConfig(id: string, viaInternet = false): Promise<void> {
 		const configFilePath = `./config/custom-reply/${this.channelInstance.channel.id}/${id}.dat`
 
 		if (viaInternet) {
-			const req = await axios(
-				`${this.configSources.get(id).source}?${Math.random()}`
-			)
+			const req = await axios(`${this.configSources.get(id).source}?${Math.random()}`)
 			const toml = req.data
 			const parsed = await TOML.parse.async(toml)
 			validateParsedConfig(parsed)
@@ -49,10 +41,9 @@ export default class {
 	}
 
 	async init(): Promise<void> {
-		await fs.mkdir(
-			`./config/custom-reply/${this.channelInstance.channel.id}/images`,
-			{ recursive: true }
-		)
+		await fs.mkdir(`./config/custom-reply/${this.channelInstance.channel.id}/images`, {
+			recursive: true,
+		})
 
 		let json
 		try {
@@ -97,10 +88,7 @@ export default class {
 		await this.gc.send(msg, 'customReply.config.localReloadingComplete')
 	}
 
-	private async _processReloadCommand(
-		args: string[],
-		msg: discordjs.Message
-	): Promise<void> {
+	private async _processReloadCommand(args: string[], msg: discordjs.Message): Promise<void> {
 		if (args.length < 1) {
 			await this.gc.send(msg, 'customReply.config.haveToSpecifyId')
 			return
@@ -160,9 +148,7 @@ export default class {
 
 	async listCommand(args: string[], msg: discordjs.Message): Promise<void> {
 		await this.gc.send(msg, 'customReply.config.list', {
-			sources: [...this.configSources]
-				.map(([k, v]) => `${k}: ${v.source}`)
-				.join('\n'),
+			sources: [...this.configSources].map(([k, v]) => `${k}: ${v.source}`).join('\n'),
 		})
 	}
 

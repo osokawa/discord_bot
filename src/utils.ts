@@ -5,9 +5,7 @@ export function unreachable(): never {
 	throw Error('This must never happen!')
 }
 
-export function parseCommand(
-	string: string
-): { commandName: string; args: string[] } | undefined {
+export function parseCommand(string: string): { commandName: string; args: string[] } | undefined {
 	const found = /^!([a-zA-Z_-]+)(\s+?.+)?$/.exec(string)
 	if (!found) {
 		return
@@ -171,9 +169,7 @@ export async function subCommandProxy(
 ): Promise<void> {
 	const validSubCommands = Object.keys(table).join(' ')
 	if (!subcommand) {
-		msg.channel.send(
-			`サブコマンドを指定して欲しいロボ: ${validSubCommands}`
-		)
+		msg.channel.send(`サブコマンドを指定して欲しいロボ: ${validSubCommands}`)
 		return
 	}
 
@@ -224,7 +220,4 @@ export async function forEachAsyncOf<T>(
 	}
 }
 
-export type LikeTextChannel =
-	| discordjs.TextChannel
-	| discordjs.GroupDMChannel
-	| discordjs.DMChannel
+export type LikeTextChannel = discordjs.TextChannel | discordjs.GroupDMChannel | discordjs.DMChannel
