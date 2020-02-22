@@ -23,7 +23,11 @@ export type MondaiConfig = {
 export class Mondai extends ChannelInstance {
 	private game: Game | undefined
 
-	constructor(public feature: FeatureMondai, public channel: discordjs.TextChannel | discordjs.GroupDMChannel | discordjs.DMChannel, public config: MondaiConfig) {
+	constructor(
+		public feature: FeatureMondai,
+		public channel: utils.LikeTextChannel,
+		public config: MondaiConfig
+	) {
 		super(feature)
 	}
 
@@ -38,14 +42,21 @@ export class Mondai extends ChannelInstance {
 		await instance.finalize()
 	}
 
-	public async onCommand(msg: discordjs.Message, name: string, rawArgs: string[]): Promise<void> {
+	public async onCommand(
+		msg: discordjs.Message,
+		name: string,
+		rawArgs: string[]
+	): Promise<void> {
 		if (name !== this.feature.cmdname) {
 			return
 		}
 
 		let args, options
 		try {
-			({ args, options } = utils.parseCommandArgs(rawArgs, ['life', 'l']))
+			;({ args, options } = utils.parseCommandArgs(rawArgs, [
+				'life',
+				'l',
+			]))
 		} catch (e) {
 			await this.gc.send(msg, 'mondai.invalidCommand', { e })
 			return
@@ -57,13 +68,16 @@ export class Mondai extends ChannelInstance {
 				return
 			}
 
-			await this.gc.send(msg, 'mondai.lastCommandIsStillInProgress', { cmdname: this.feature.cmdname })
+			await this.gc.send(msg, 'mondai.lastCommandIsStillInProgress', {
+				cmdname: this.feature.cmdname,
+			})
 			return
 		}
 
-		const validModes = this.config.options.type === 'music'
-			? ['music', 'intro']
-			: ['image', 'mosaic', 'audio']
+		const validModes =
+			this.config.options.type === 'music'
+				? ['music', 'intro']
+				: ['image', 'mosaic', 'audio']
 
 		let mode = validModes[0]
 		if (1 <= args.length) {
@@ -77,7 +91,7 @@ export class Mondai extends ChannelInstance {
 
 		try {
 			const opts: GameOption = {
-				repeat: utils.getOption(options, ['repeat', 'r']) as boolean
+				repeat: utils.getOption(options, ['repeat', 'r']) as boolean,
 			}
 
 			const life = utils.getOption(options, ['life', 'l'], null)
@@ -127,8 +141,14 @@ export class FeatureMondai extends Feature {
 		this.config = parsed as MondaiConfig
 	}
 
-	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
-		await this.dispatchToChannels(msg.channel, x => (x as Mondai).onCommand(msg, name, args))
+	async onCommand(
+		msg: discordjs.Message,
+		name: string,
+		args: string[]
+	): Promise<void> {
+		await this.dispatchToChannels(msg.channel, x =>
+			(x as Mondai).onCommand(msg, name, args)
+		)
 	}
 
 	createChannelInstance(channel: utils.LikeTextChannel): ChannelInstance {

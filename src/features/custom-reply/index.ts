@@ -18,7 +18,10 @@ export class CustomReply extends ChannelInstance {
 	private images: Images
 	private config: Config
 
-	constructor(private feature: FeatureCustomReply, public channel: discordjs.Channel) {
+	constructor(
+		private feature: FeatureCustomReply,
+		public channel: discordjs.Channel
+	) {
 		super(feature)
 		this.images = new Images(this, this.gc)
 		this.config = new Config(this, this.gc)
@@ -30,7 +33,10 @@ export class CustomReply extends ChannelInstance {
 		this.initialized = true
 	}
 
-	async _processPickedResponse(msg: discordjs.Message, response: Response): Promise<void> {
+	async _processPickedResponse(
+		msg: discordjs.Message,
+		response: Response
+	): Promise<void> {
 		if (response.action === 'do-nothing') {
 			return
 		}
@@ -48,12 +54,20 @@ export class CustomReply extends ChannelInstance {
 				await this.gc.send(msg, 'customReply.gachaImageNotFound')
 				return
 			}
-			options.files = [new discordjs.Attachment(this.images.getImagePathById(utils.randomPick(list)))]
+			options.files = [
+				new discordjs.Attachment(
+					this.images.getImagePathById(utils.randomPick(list))
+				),
+			]
 		} else {
 			const imageId = response.image
 			if (imageId) {
 				if (!isValidImageId(imageId)) {
-					await this.gc.send(msg, 'customReply.invalidImageIdInResponse', { imageId })
+					await this.gc.send(
+						msg,
+						'customReply.invalidImageIdInResponse',
+						{ imageId }
+					)
 					console.log(`無効な画像ID ${imageId}`)
 					return
 				}
@@ -61,7 +75,11 @@ export class CustomReply extends ChannelInstance {
 				try {
 					await fs.access(path)
 				} catch (_) {
-					await this.gc.send(msg, 'customReply.imageIdThatDoesNotExist', { imageId })
+					await this.gc.send(
+						msg,
+						'customReply.imageIdThatDoesNotExist',
+						{ imageId }
+					)
 					return
 				}
 				const attachment = new discordjs.Attachment(path)
@@ -88,15 +106,23 @@ export class CustomReply extends ChannelInstance {
 		}
 	}
 
-	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
+	async onCommand(
+		msg: discordjs.Message,
+		name: string,
+		args: string[]
+	): Promise<void> {
 		if (name !== this.feature.cmdname) {
 			return
 		}
 
-		await utils.subCommandProxy({
-			config: (a, m) => this.config.command(a, m),
-			images: (a, m) => this.images.command(a, m),
-		}, args, msg)
+		await utils.subCommandProxy(
+			{
+				config: (a, m) => this.config.command(a, m),
+				images: (a, m) => this.images.command(a, m),
+			},
+			args,
+			msg
+		)
 	}
 
 	async onMessage(msg: discordjs.Message): Promise<void> {
@@ -125,8 +151,14 @@ export class FeatureCustomReply extends Feature {
 		return Promise.resolve()
 	}
 
-	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
-		await this.dispatchToChannels(msg.channel, x => (x as CustomReply).onCommand(msg, name, args))
+	async onCommand(
+		msg: discordjs.Message,
+		name: string,
+		args: string[]
+	): Promise<void> {
+		await this.dispatchToChannels(msg.channel, x =>
+			(x as CustomReply).onCommand(msg, name, args)
+		)
 	}
 
 	createChannelInstance(channel: discordjs.Channel): ChannelInstance {

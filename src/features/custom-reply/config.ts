@@ -20,14 +20,21 @@ export default class {
 	public config = new Map()
 	private configSources = new Map()
 
-	constructor(private channelInstance: CustomReply, private gc: GlobalConfig) {
-	}
+	constructor(
+		private channelInstance: CustomReply,
+		private gc: GlobalConfig
+	) {}
 
-	private async _updateConfig(id: string, viaInternet = false): Promise<void> {
+	private async _updateConfig(
+		id: string,
+		viaInternet = false
+	): Promise<void> {
 		const configFilePath = `./config/custom-reply/${this.channelInstance.channel.id}/${id}.dat`
 
 		if (viaInternet) {
-			const req = await axios(`${this.configSources.get(id).source}?${Math.random()}`)
+			const req = await axios(
+				`${this.configSources.get(id).source}?${Math.random()}`
+			)
 			const toml = req.data
 			const parsed = await TOML.parse.async(toml)
 			validateParsedConfig(parsed)
@@ -42,11 +49,17 @@ export default class {
 	}
 
 	async init(): Promise<void> {
-		await fs.mkdir(`./config/custom-reply/${this.channelInstance.channel.id}/images`, { recursive: true })
+		await fs.mkdir(
+			`./config/custom-reply/${this.channelInstance.channel.id}/images`,
+			{ recursive: true }
+		)
 
 		let json
 		try {
-			json = await fs.readFile(`./config/custom-reply/${this.channelInstance.channel.id}/sources.json`, 'utf-8')
+			json = await fs.readFile(
+				`./config/custom-reply/${this.channelInstance.channel.id}/sources.json`,
+				'utf-8'
+			)
 		} catch (_) {
 			return
 		}
@@ -66,20 +79,28 @@ export default class {
 		}
 	}
 
-	private async _processReloadLocalCommand(args: string[], msg: discordjs.Message): Promise<void> {
+	private async _processReloadLocalCommand(
+		args: string[],
+		msg: discordjs.Message
+	): Promise<void> {
 		for (const id of this.configSources.keys()) {
 			try {
 				this._updateConfig(id)
 			} catch (e) {
 				console.error(e)
-				await this.gc.send(msg, 'customReply.config.errorOnReloading', { id })
+				await this.gc.send(msg, 'customReply.config.errorOnReloading', {
+					id,
+				})
 				continue
 			}
 		}
 		await this.gc.send(msg, 'customReply.config.localReloadingComplete')
 	}
 
-	private async _processReloadCommand(args: string[], msg: discordjs.Message): Promise<void> {
+	private async _processReloadCommand(
+		args: string[],
+		msg: discordjs.Message
+	): Promise<void> {
 		if (args.length < 1) {
 			await this.gc.send(msg, 'customReply.config.haveToSpecifyId')
 			return
@@ -96,7 +117,9 @@ export default class {
 			await this._updateConfig(id, true)
 		} catch (e) {
 			console.error(e)
-			await this.gc.send(msg, 'customReply.config.errorOnReloading', { id })
+			await this.gc.send(msg, 'customReply.config.errorOnReloading', {
+				id,
+			})
 			return
 		}
 
@@ -106,7 +129,8 @@ export default class {
 	async writeSourcesJson(): Promise<void> {
 		await fs.writeFile(
 			`./config/custom-reply/${this.channelInstance.channel.id}/sources.json`,
-			JSON.stringify([...this.configSources]))
+			JSON.stringify([...this.configSources])
+		)
 	}
 
 	async addCommand(args: string[], msg: discordjs.Message): Promise<void> {
@@ -136,7 +160,9 @@ export default class {
 
 	async listCommand(args: string[], msg: discordjs.Message): Promise<void> {
 		await this.gc.send(msg, 'customReply.config.list', {
-			sources: [...this.configSources].map(([k, v]) => `${k}: ${v.source}`).join('\n')
+			sources: [...this.configSources]
+				.map(([k, v]) => `${k}: ${v.source}`)
+				.join('\n'),
 		})
 	}
 
@@ -161,12 +187,16 @@ export default class {
 	}
 
 	async command(args: string[], msg: discordjs.Message): Promise<void> {
-		await utils.subCommandProxy({
-			reload: (a, m) => this._processReloadCommand(a, m),
-			reloadlocal: (a, m) => this._processReloadLocalCommand(a, m),
-			add: (a, m) => this.addCommand(a, m),
-			list: (a, m) => this.listCommand(a, m),
-			remove: (a, m) => this.removeCommand(a, m)
-		}, args, msg)
+		await utils.subCommandProxy(
+			{
+				reload: (a, m) => this._processReloadCommand(a, m),
+				reloadlocal: (a, m) => this._processReloadLocalCommand(a, m),
+				add: (a, m) => this.addCommand(a, m),
+				list: (a, m) => this.listCommand(a, m),
+				remove: (a, m) => this.removeCommand(a, m),
+			},
+			args,
+			msg
+		)
 	}
 }

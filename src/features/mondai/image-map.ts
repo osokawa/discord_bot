@@ -4,7 +4,8 @@ export function calcDivisionNumber(total: number): { x: number; y: number } {
 	if (total < 1) {
 		throw new Error('だめ')
 	}
-	let x = 1, y = 1
+	let x = 1,
+		y = 1
 
 	// eslint-disable-next-line no-constant-condition
 	while (true) {
@@ -20,12 +21,18 @@ export function calcDivisionNumber(total: number): { x: number; y: number } {
 	}
 }
 
-export async function generateImageMap(width: number, height: number, files: string[]): Promise<Buffer> {
+export async function generateImageMap(
+	width: number,
+	height: number,
+	files: string[]
+): Promise<Buffer> {
 	const { x, y } = calcDivisionNumber(files.length)
 
 	const promise: Promise<Jimp> = new Promise((resolve, reject) => {
 		new Jimp(width, height, '#FFFFFF', (err, image) => {
-			if (err) { reject(err) }
+			if (err) {
+				reject(err)
+			}
 			resolve(image)
 		})
 	})
@@ -35,7 +42,8 @@ export async function generateImageMap(width: number, height: number, files: str
 	const singleX = width / x
 	const singleY = height / y
 
-	let nowX = 0, nowY = 0
+	let nowX = 0,
+		nowY = 0
 
 	for (let i = 0; i < files.length; i++) {
 		const image = await Jimp.read(files[i])

@@ -5,7 +5,9 @@ export function unreachable(): never {
 	throw Error('This must never happen!')
 }
 
-export function parseCommand(string: string): { commandName: string; args: string[] } | undefined {
+export function parseCommand(
+	string: string
+): { commandName: string; args: string[] } | undefined {
 	const found = /^!([a-zA-Z_-]+)(\s+?.+)?$/.exec(string)
 	if (!found) {
 		return
@@ -22,9 +24,8 @@ export function parseCommand(string: string): { commandName: string; args: strin
 export function parseCommandArgs(
 	argsToParse: string[],
 	optionsWithValue: string[] = [],
-	minimumArgs = 0):
-	{ args: string[]; options: { [_: string]: string | boolean } } {
-
+	minimumArgs = 0
+): { args: string[]; options: { [_: string]: string | boolean } } {
 	const args = []
 	const options: { [_: string]: string | boolean } = {}
 
@@ -96,12 +97,25 @@ export function parseCommandArgs(
 		throw '引数の数が足りません'
 	}
 
-	return {args, options}
+	return { args, options }
 }
 
-export function getOption(options: { [_: string]: string | boolean }, keys: string[]): string | boolean
-export function getOption<T>(options: { [_: string]: string | boolean }, keys: string[], defaultValue: T): string | boolean | T
-export function getOption<T>(options: { [_: string]: string | boolean }, keys: string[], defaultValue?: T): T | string | boolean {
+export function getOption(
+	options: { [_: string]: string | boolean },
+	keys: string[]
+): string | boolean
+
+export function getOption<T>(
+	options: { [_: string]: string | boolean },
+	keys: string[],
+	defaultValue: T
+): string | boolean | T
+
+export function getOption<T>(
+	options: { [_: string]: string | boolean },
+	keys: string[],
+	defaultValue?: T
+): T | string | boolean {
 	for (const key of keys) {
 		if (key in options) {
 			return options[key]
@@ -149,12 +163,17 @@ export function randomPick<T>(array: T | T[]): T {
 }
 
 export async function subCommandProxy(
-	table: { [_: string]: (args: string[], msg: discordjs.Message) => Promise<void> },
+	table: {
+		[_: string]: (args: string[], msg: discordjs.Message) => Promise<void>
+	},
 	[subcommand, ...args]: string[],
-	msg: discordjs.Message): Promise<void> {
+	msg: discordjs.Message
+): Promise<void> {
 	const validSubCommands = Object.keys(table).join(' ')
 	if (!subcommand) {
-		msg.channel.send(`サブコマンドを指定して欲しいロボ: ${validSubCommands}`)
+		msg.channel.send(
+			`サブコマンドを指定して欲しいロボ: ${validSubCommands}`
+		)
 		return
 	}
 
@@ -166,8 +185,10 @@ export async function subCommandProxy(
 	}
 }
 
-
-export function replaceEmoji(text: string, emojis: discordjs.Collection<discordjs.Snowflake, discordjs.Emoji>): string {
+export function replaceEmoji(
+	text: string,
+	emojis: discordjs.Collection<discordjs.Snowflake, discordjs.Emoji>
+): string {
 	return text.replace(/:(\w+):/g, (match, emojiName) => {
 		const foundEmoji = emojis.find(x => x.name === emojiName)
 		return foundEmoji ? foundEmoji.toString() : match
@@ -179,23 +200,31 @@ export function isValidUrl(url: string): boolean {
 	return validUrlRegExp.exec(url) ? true : false
 }
 
-export async function forEachAsyncOf<T>(arr: Iterable<T>, doWithX: (x: T) => Promise<void>): Promise<void> {
+export async function forEachAsyncOf<T>(
+	arr: Iterable<T>,
+	doWithX: (x: T) => Promise<void>
+): Promise<void> {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const errors: any[] = []
 
-	await Promise.all(Array.from(arr, x => {
-		return (async (): Promise<void> => {
-			try {
-				await doWithX(x)
-			} catch (e) {
-				errors.push(e)
-			}
-		})()
-	}))
+	await Promise.all(
+		Array.from(arr, x => {
+			return (async (): Promise<void> => {
+				try {
+					await doWithX(x)
+				} catch (e) {
+					errors.push(e)
+				}
+			})()
+		})
+	)
 
 	if (errors.length !== 0) {
 		throw errors
 	}
 }
 
-export type LikeTextChannel = discordjs.TextChannel | discordjs.GroupDMChannel | discordjs.DMChannel
+export type LikeTextChannel =
+	| discordjs.TextChannel
+	| discordjs.GroupDMChannel
+	| discordjs.DMChannel

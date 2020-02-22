@@ -15,7 +15,12 @@ export type GameOption = {
 
 type GameMode = string
 
-function generateMondaiImage(mode: string, inPath: string, outPath: string, opts: { [_: string]: string } = {}): Promise<{ [_: string]: string }> {
+function generateMondaiImage(
+	mode: string,
+	inPath: string,
+	outPath: string,
+	opts: { [_: string]: string } = {}
+): Promise<{ [_: string]: string }> {
 	const optArgs: string[] = []
 	for (const key of Object.keys(opts)) {
 		optArgs.push(`-${key}`)
@@ -24,26 +29,37 @@ function generateMondaiImage(mode: string, inPath: string, outPath: string, opts
 
 	return new Promise((resolve, reject) => {
 		// TODO: ReadonlyArray<string> に代入出来ない?
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const args: ReadonlyArray<string> = [...optArgs, mode, inPath, outPath] as any
-		execFile('./tools/mondai.rb', args, {}, (error: Error | null, stdout: string | Buffer) => {
-			if (error) {
-				reject(error)
+		const args: ReadonlyArray<string> = [
+			...optArgs,
+			mode,
+			inPath,
+			outPath,
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		] as any
+		execFile(
+			'./tools/mondai.rb',
+			args,
+			{},
+			(error: Error | null, stdout: string | Buffer) => {
+				if (error) {
+					reject(error)
+				}
+				try {
+					resolve(JSON.parse(stdout as string))
+				} catch (e) {
+					reject(e)
+				}
 			}
-			try {
-				resolve(JSON.parse(stdout as string))
-			} catch (e) {
-				reject(e)
-			}
-		})
+		)
 	})
 }
 
 function normalizeAnswerMessage(message: string): string {
-	const replaceTables: [RegExp, string][] = [
-		[/\s+/g, ' '],
-	]
-	const replaced = replaceTables.reduce((a, i) => a.replace(i[0], i[1]), message)
+	const replaceTables: [RegExp, string][] = [[/\s+/g, ' ']]
+	const replaced = replaceTables.reduce(
+		(a, i) => a.replace(i[0], i[1]),
+		message
+	)
 	return replaced.normalize('NFKC')
 }
 
@@ -62,7 +78,12 @@ export class Game {
 	private tmpDir: string | undefined
 	private feature: FeatureMondai
 
-	constructor(private channelInstance: Mondai, private _gc: GlobalConfig, private mode: GameMode, private options: GameOption) {
+	constructor(
+		private channelInstance: Mondai,
+		private _gc: GlobalConfig,
+		private mode: GameMode,
+		private options: GameOption
+	) {
 		this.feature = channelInstance.feature
 	}
 
@@ -100,7 +121,9 @@ export class Game {
 		}
 
 		const episode = utils.randomPick(this.config.episodes)
-		const outputPath = this._getTmpPath(this._isAudioMode ? 'audio.mp3' : 'image.jpg')
+		const outputPath = this._getTmpPath(
+			this._isAudioMode ? 'audio.mp3' : 'image.jpg'
+		)
 		const mosaicOriginalPath = path.join(this.tmpDir, 'original.jpg')
 		const options: { [_: string]: string } = {}
 		if (this._isMosaicMode) {
@@ -111,7 +134,12 @@ export class Game {
 		}
 
 		try {
-			const generateResult = await generateMondaiImage(this.mode, episode.filename, outputPath, options)
+			const generateResult = await generateMondaiImage(
+				this.mode,
+				episode.filename,
+				outputPath,
+				options
+			)
 			this.answer = {
 				title: episode.title,
 				pattern: episode.pattern,
@@ -123,7 +151,12 @@ export class Game {
 		}
 
 		const attachment = new discordjs.Attachment(outputPath)
-		await this._gc.sendToChannel(this.channelInstance.channel, 'mondai.sendMondaiImage', {}, { files: [attachment] })
+		await this._gc.sendToChannel(
+			this.channelInstance.channel,
+			'mondai.sendMondaiImage',
+			{},
+			{ files: [attachment] }
+		)
 	}
 
 	async init(): Promise<void> {
@@ -133,17 +166,25 @@ export class Game {
 		this.processing = false
 	}
 
-	async _postResultMessage(msg: discordjs.Message, key: string, ans: Answer, title: string): Promise<void> {
+	async _postResultMessage(
+		msg: discordjs.Message,
+		key: string,
+		ans: Answer,
+		title: string
+	): Promise<void> {
 		const options: discordjs.MessageOptions = {}
 		if (this._isMosaicMode) {
-			options.files = [new discordjs.Attachment(this._getTmpPath('original.jpg'))]
+			options.files = [
+				new discordjs.Attachment(this._getTmpPath('original.jpg')),
+			]
 		}
 
 		await this._gc.send(
 			msg,
 			'mondai.answer.' + key,
 			{ title, time: ans.time, mosaic: this._isMosaicMode },
-			options)
+			options
+		)
 	}
 
 	async _pushIncorrectImageLog(): Promise<void> {
@@ -151,7 +192,9 @@ export class Game {
 			throw 'なんかおかしい'
 		}
 		if (!this._isAudioMode && this.isRepeat) {
-			const filename = this._getTmpPath(`incorrect${this.incorrectCount}.jpg`)
+			const filename = this._getTmpPath(
+				`incorrect${this.incorrectCount}.jpg`
+			)
 			await fs.copyFile(this._getTmpPath('image.jpg'), filename)
 			this._incorrectImageLog.push({ filename, answer: this.answer })
 		}
@@ -161,7 +204,7 @@ export class Game {
 		const text = normalizeAnswerMessage(msg.content)
 		const ans = this.answer
 		if (ans === undefined) {
-			throw 'なんかおかしい'
+			utils.unreachable()
 		}
 		const title = ans.title
 
@@ -185,7 +228,12 @@ export class Game {
 			this._pushIncorrectImageLog()
 
 			if (this.isRepeat && this.incorrectCount == this.incorrectLimit) {
-				await this._postResultMessage(msg, 'reachedIncorrectLimit', ans, title)
+				await this._postResultMessage(
+					msg,
+					'reachedIncorrectLimit',
+					ans,
+					title
+				)
 				return false
 			}
 
@@ -207,7 +255,12 @@ export class Game {
 
 				if (this.incorrectCount == this.incorrectLimit) {
 					this._pushIncorrectImageLog()
-					await this._postResultMessage(msg, 'reachedIncorrectLimit', ans, title)
+					await this._postResultMessage(
+						msg,
+						'reachedIncorrectLimit',
+						ans,
+						title
+					)
 					return false
 				}
 
@@ -234,14 +287,23 @@ export class Game {
 
 	async finalize(): Promise<void> {
 		if (this.isRepeat) {
-			await this._gc.sendToChannel(this.channelInstance.channel, 'mondai.repeatResult', { correctCount: this.correctCount })
+			await this._gc.sendToChannel(
+				this.channelInstance.channel,
+				'mondai.repeatResult',
+				{ correctCount: this.correctCount }
+			)
 			if (!this._isAudioMode && 10 <= this.correctCount) {
-				const buf = await generateImageMap(1920, 1080, this._incorrectImageLog.map(x => x.filename))
+				const buf = await generateImageMap(
+					1920,
+					1080,
+					this._incorrectImageLog.map(x => x.filename)
+				)
 				await this._gc.sendToChannel(
 					this.channelInstance.channel,
 					'mondai.incorrectImageMap',
 					{ answers: this._incorrectImageLog.map(x => x.answer) },
-					{ files: [new discordjs.Attachment(buf, 'image.jpg')] })
+					{ files: [new discordjs.Attachment(buf, 'image.jpg')] }
+				)
 			}
 		}
 

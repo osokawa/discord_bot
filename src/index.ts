@@ -9,7 +9,7 @@ const featureManager = new FeatureManager()
 let ready = false
 
 client.on('ready', () => {
-	(async (): Promise<void> => {
+	;(async (): Promise<void> => {
 		console.log(`Logged in as ${client.user.tag}!`)
 
 		await featureManager.init()
@@ -22,8 +22,8 @@ client.on('ready', () => {
 	})()
 })
 
-client.on('message', (msg) => {
-	(async (): Promise<void> => {
+client.on('message', msg => {
+	;(async (): Promise<void> => {
 		if (!ready) {
 			return
 		}
@@ -33,7 +33,7 @@ client.on('message', (msg) => {
 })
 
 process.on('SIGINT', () => {
-	(async (): Promise<void> => {
+	;(async (): Promise<void> => {
 		client.destroy()
 		await featureManager.finalize()
 		console.log('discord bot was shut down.')

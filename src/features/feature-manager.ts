@@ -10,7 +10,10 @@ export default class {
 	private _gc: GlobalConfig
 
 	constructor() {
-		this._gc = new GlobalConfig(['./config/config-default.toml', './config/config.toml'])
+		this._gc = new GlobalConfig([
+			'./config/config-default.toml',
+			'./config/config.toml',
+		])
 	}
 
 	get gc(): GlobalConfig {
@@ -31,15 +34,22 @@ export default class {
 	}
 
 	private async _eachAsync(cb: (x: Feature) => Promise<void>): Promise<void> {
-		return await utils.forEachAsyncOf(this._features.values(), async feature => {
-			if (!feature.hasInitialized) {
-				return
+		return await utils.forEachAsyncOf(
+			this._features.values(),
+			async feature => {
+				if (!feature.hasInitialized) {
+					return
+				}
+				await cb(feature)
 			}
-			await cb(feature)
-		})
+		)
 	}
 
-	async command(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
+	async command(
+		msg: discordjs.Message,
+		name: string,
+		args: string[]
+	): Promise<void> {
 		await this._eachAsync(x => x.onCommand(msg, name, args))
 	}
 

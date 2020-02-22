@@ -30,7 +30,11 @@ export interface Guild {
 }
 
 export interface Command {
-	onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void>
+	onCommand(
+		msg: discordjs.Message,
+		name: string,
+		args: string[]
+	): Promise<void>
 }
 
 export abstract class Feature {
@@ -39,7 +43,10 @@ export abstract class Feature {
 	private _channels: Channel[] = []
 
 	private _guildInstances: Map<string, Map<number, GuildInstance>> = new Map()
-	private _channelInstances: Map<string, Map<number, ChannelInstance>> = new Map()
+	private _channelInstances: Map<
+		string,
+		Map<number, ChannelInstance>
+	> = new Map()
 
 	private _hasInitialized = false
 	private _manager: FeatureManager | undefined
@@ -84,8 +91,8 @@ export abstract class Feature {
 		arr: ArrayType[],
 		instancesMap: Map<IdType, Map<number, InstanceType>>,
 		id: IdType,
-		createInstance: (x: ArrayType) => InstanceType): InstanceType[] {
-
+		createInstance: (x: ArrayType) => InstanceType
+	): InstanceType[] {
 		if (arr.length === 0) {
 			return []
 		}
@@ -105,21 +112,30 @@ export abstract class Feature {
 		})
 
 		const tmp = instancesMap.get(id)
-		if (tmp === undefined) { utils.unreachable() }
+		if (tmp === undefined) {
+			utils.unreachable()
+		}
 		return Array.from(tmp.values())
 	}
 
-	async dispatchToChannels(channel: utils.LikeTextChannel, doWithInstance: (i: ChannelInstance) => Promise<void>): Promise<void> {
+	async dispatchToChannels(
+		channel: utils.LikeTextChannel,
+		doWithInstance: (i: ChannelInstance) => Promise<void>
+	): Promise<void> {
 		const channelInstances = this._dispatchBase(
 			this._channels,
 			this._channelInstances,
 			channel.id,
-			x => x.createChannelInstance(channel))
+			x => x.createChannelInstance(channel)
+		)
 
 		await utils.forEachAsyncOf(channelInstances, doWithInstance)
 	}
 
-	async dispatchToGuilds(guild: discordjs.Guild, doWithInstance: (i: GuildInstance) => Promise<void>): Promise<void> {
+	async dispatchToGuilds(
+		guild: discordjs.Guild,
+		doWithInstance: (i: GuildInstance) => Promise<void>
+	): Promise<void> {
 		if (!guild) {
 			return
 		}
@@ -128,16 +144,23 @@ export abstract class Feature {
 			this._guilds,
 			this._guildInstances,
 			guild.id,
-			x => x.createGuildInstance(guild))
+			x => x.createGuildInstance(guild)
+		)
 
 		await utils.forEachAsyncOf(channelInstances, doWithInstance)
 	}
 
-	async dispatchToCommands(doWithInstance: (i: Command) => Promise<void>): Promise<void> {
+	async dispatchToCommands(
+		doWithInstance: (i: Command) => Promise<void>
+	): Promise<void> {
 		await utils.forEachAsyncOf(this._commands, doWithInstance)
 	}
 
-	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
+	async onCommand(
+		msg: discordjs.Message,
+		name: string,
+		args: string[]
+	): Promise<void> {
 		await this.dispatchToCommands(x => x.onCommand(msg, name, args))
 	}
 
