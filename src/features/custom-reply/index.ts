@@ -1,9 +1,10 @@
-import * as discordjs from 'discord.js'
-import * as utils from '../../utils'
 import { promises as fs } from 'fs'
-import { Images, isValidImageId } from './images'
-import Config from './config'
-import { Feature, ChannelInstance } from '../feature'
+import * as discordjs from 'discord.js'
+
+import { Feature, ChannelInstance } from 'Src/features/feature'
+import * as utils from 'Src/utils'
+import { Images, isValidImageId } from 'Src/features/custom-reply/images'
+import Config from 'Src/features/custom-reply/config'
 
 type Response = {
 	action: string

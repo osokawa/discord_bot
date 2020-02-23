@@ -1,12 +1,13 @@
-import * as discordjs from 'discord.js'
 import { execFile } from 'child_process'
 import * as os from 'os'
 import { promises as fs } from 'fs'
 import * as path from 'path'
-import * as utils from '../../utils'
-import GlobalConfig from '../../global-config'
-import { FeatureMondai, Mondai, MondaiConfig } from '.'
-import { generateImageMap } from './image-map'
+import * as discordjs from 'discord.js'
+
+import GlobalConfig from 'Src/global-config'
+import * as utils from 'Src/utils'
+import { FeatureMondai, Mondai, MondaiConfig } from 'Src/features/mondai'
+import { generateImageMap } from 'Src/features/mondai/image-map'
 
 export type GameOption = {
 	repeat?: boolean

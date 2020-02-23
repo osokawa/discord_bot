@@ -1,9 +1,9 @@
 import { Client } from 'discord.js'
-const client = new Client()
 
-import FeatureManager from './features/feature-manager'
+import FeatureManager from 'Src/features/feature-manager'
 import features from '../config/features'
 
+const client = new Client()
 const featureManager = new FeatureManager()
 
 let ready = false

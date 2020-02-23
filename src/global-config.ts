@@ -1,8 +1,9 @@
 import { promises as fs } from 'fs'
-import * as utils from './utils'
 import TOML from '@iarna/toml'
 import * as lodash from 'lodash'
 import * as discordjs from 'discord.js'
+
+import * as utils from 'Src/utils'
 
 type Message = string | (string | { text: string; weight?: number })[]
 

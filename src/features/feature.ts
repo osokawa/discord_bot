@@ -1,7 +1,8 @@
-import * as utils from '../utils'
 import * as discordjs from 'discord.js'
-import FeatureManager from './feature-manager'
-import GlobalConfig from '../global-config'
+
+import FeatureManager from 'Src/features/feature-manager'
+import GlobalConfig from 'Src/global-config'
+import * as utils from 'Src/utils'
 
 export abstract class ChannelInstance {
 	protected gc: GlobalConfig

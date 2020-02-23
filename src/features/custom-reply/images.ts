@@ -1,9 +1,10 @@
-import axios from 'axios'
 import { promises as fs } from 'fs'
-import * as utils from '../../utils'
+import axios from 'axios'
 import * as discordjs from 'discord.js'
-import GlobalConfig from '../../global-config'
-import { CustomReply } from '.'
+
+import GlobalConfig from 'Src/global-config'
+import * as utils from 'Src/utils'
+import { CustomReply } from 'src/features/custom-reply'
 
 export function isValidImageId(id: string): boolean {
 	const validImageIdRegExp = /^[a-zA-Z0-9-_]{2,32}\.(png|jpg|jpeg|gif)$/

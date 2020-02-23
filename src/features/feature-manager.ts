@@ -1,9 +1,8 @@
-import * as utils from '../utils'
-
-import GlobalConfig from '../global-config'
-
 import * as discordjs from 'discord.js'
-import { Feature } from './feature'
+
+import GlobalConfig from 'Src/global-config'
+import { Feature } from 'Src/features/feature'
+import * as utils from 'Src/utils'
 
 export default class {
 	private _features: Map<string, Feature> = new Map()

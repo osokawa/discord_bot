@@ -1,11 +1,10 @@
 import { promises as fs } from 'fs'
-import * as utils from '../../utils'
 import TOML from '@iarna/toml'
-import { Game, GameOption } from './game'
-
-import { Feature, ChannelInstance } from '../feature'
-
 import * as discordjs from 'discord.js'
+
+import { Feature, ChannelInstance } from 'Src/features/feature'
+import * as utils from 'Src/utils'
+import { Game, GameOption } from 'Src/features/mondai/game'
 
 export type MondaiConfig = {
 	options: {

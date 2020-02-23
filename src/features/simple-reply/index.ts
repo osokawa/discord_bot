@@ -1,5 +1,6 @@
 import * as discordjs from 'discord.js'
-import { Feature, ChannelInstance } from '../feature'
+
+import { Feature, ChannelInstance } from 'Src/features/feature'
 
 class SimpleReply extends ChannelInstance {
 	constructor(private feature: FeatureSimpleReply) {

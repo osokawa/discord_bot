@@ -1,5 +1,6 @@
-import { Feature } from '../feature'
 import * as discordjs from 'discord.js'
+
+import { Feature } from 'Src/features/feature'
 
 export default class extends Feature {
 	constructor(private from: string, private toName: string, private toArgs: string[]) {

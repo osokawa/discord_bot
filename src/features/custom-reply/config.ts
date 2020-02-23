@@ -1,10 +1,11 @@
-import TOML from '@iarna/toml'
-import axios from 'axios'
 import { promises as fs } from 'fs'
-import * as utils from '../../utils'
+import axios from 'axios'
+import TOML from '@iarna/toml'
 import * as discordjs from 'discord.js'
-import GlobalConfig from '../../global-config'
-import { CustomReply } from '.'
+
+import GlobalConfig from 'Src/global-config'
+import * as utils from 'Src/utils'
+import { CustomReply } from 'src/features/custom-reply'
 
 function validateParsedConfig(config: any): boolean {
 	// TODO: バリデーション実施。ダメな時は throw する
