@@ -2,7 +2,7 @@ import { promises as fs } from 'fs'
 import TOML from '@iarna/toml'
 import * as discordjs from 'discord.js'
 
-import { Feature, ChannelInstance } from 'Src/features/feature'
+import { Feature, Command, ChannelInstance } from 'Src/features/feature'
 import * as utils from 'Src/utils'
 import { Game, GameOption } from 'Src/features/mondai/game'
 
@@ -41,11 +41,7 @@ export class Mondai extends ChannelInstance {
 		await instance.finalize()
 	}
 
-	public async onCommand(msg: discordjs.Message, name: string, rawArgs: string[]): Promise<void> {
-		if (name !== this.feature.cmdname) {
-			return
-		}
-
+	public async onCommand(msg: discordjs.Message, rawArgs: string[]): Promise<void> {
 		let args, options
 		try {
 			;({ args, options } = utils.parseCommandArgs(rawArgs, ['life', 'l']))
@@ -115,6 +111,22 @@ export class Mondai extends ChannelInstance {
 	}
 }
 
+class FeatureMondaiCommand implements Command {
+	constructor(private feature: FeatureMondai, private cmdname: string) {}
+
+	name(): string {
+		return this.cmdname
+	}
+
+	description(): string {
+		return 'mondai'
+	}
+
+	async command(msg: discordjs.Message, args: string[]): Promise<void> {
+		await this.feature.dispatchToChannels(msg.channel, x => (x as Mondai).onCommand(msg, args))
+	}
+}
+
 export class FeatureMondai extends Feature {
 	private config: MondaiConfig | undefined
 
@@ -124,15 +136,11 @@ export class FeatureMondai extends Feature {
 
 	async initImpl(): Promise<void> {
 		this.registerChannel(this)
-		this.registerCommand(this)
+		this.registerCommand(new FeatureMondaiCommand(this, this.cmdname))
 
 		const toml = await fs.readFile(this.configPath, 'utf-8')
 		const parsed = await TOML.parse.async(toml)
 		this.config = parsed as MondaiConfig
-	}
-
-	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
-		await this.dispatchToChannels(msg.channel, x => (x as Mondai).onCommand(msg, name, args))
 	}
 
 	createChannelInstance(channel: utils.LikeTextChannel): ChannelInstance {

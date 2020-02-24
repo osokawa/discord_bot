@@ -1,6 +1,28 @@
 import * as discordjs from 'discord.js'
 
-import { Feature } from 'Src/features/feature'
+import { Feature, Command } from 'Src/features/feature'
+import FeatureManager from 'Src/features/feature-manager'
+
+class CommandAliasCommand implements Command {
+	constructor(
+		private manager: FeatureManager,
+		private from: string,
+		private toName: string,
+		private toArgs: string[]
+	) {}
+
+	name(): string {
+		return this.from
+	}
+
+	description(): string {
+		return `${this.toName} ${this.toArgs.join(' ')} へのエイリアス`
+	}
+
+	async command(msg: discordjs.Message, args: string[]): Promise<void> {
+		await this.manager.command(msg, this.toName, [...this.toArgs, ...args])
+	}
+}
 
 export default class extends Feature {
 	constructor(private from: string, private toName: string, private toArgs: string[]) {
@@ -8,13 +30,9 @@ export default class extends Feature {
 	}
 
 	async initImpl(): Promise<void> {
-		this.registerCommand(this)
+		this.registerCommand(
+			new CommandAliasCommand(this.manager, this.from, this.toName, this.toArgs)
+		)
 		return Promise.resolve()
-	}
-
-	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
-		if (name === this.from) {
-			await this.manager.command(msg, this.toName, [...this.toArgs, ...args])
-		}
 	}
 }

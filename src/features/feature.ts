@@ -31,7 +31,9 @@ export interface Guild {
 }
 
 export interface Command {
-	onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void>
+	name(): string
+	description(): string
+	command(msg: discordjs.Message, args: string[]): Promise<void>
 }
 
 export abstract class Feature {
@@ -149,7 +151,11 @@ export abstract class Feature {
 	}
 
 	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
-		await this.dispatchToCommands(x => x.onCommand(msg, name, args))
+		const cmd = this._commands.find(x => x.name() === name)
+		if (cmd === undefined) {
+			return
+		}
+		await cmd.command(msg, args)
 	}
 
 	async onMessage(msg: discordjs.Message): Promise<void> {

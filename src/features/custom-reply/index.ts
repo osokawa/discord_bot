@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs'
 import * as discordjs from 'discord.js'
 
-import { Feature, ChannelInstance } from 'Src/features/feature'
+import { Feature, Command, ChannelInstance } from 'Src/features/feature'
 import * as utils from 'Src/utils'
 import { Images, isValidImageId } from 'Src/features/custom-reply/images'
 import Config from 'Src/features/custom-reply/config'
@@ -91,11 +91,7 @@ export class CustomReply extends ChannelInstance {
 		}
 	}
 
-	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
-		if (name !== this.feature.cmdname) {
-			return
-		}
-
+	async onCommand(msg: discordjs.Message, args: string[]): Promise<void> {
 		await utils.subCommandProxy(
 			{
 				config: (a, m) => this.config.command(a, m),
@@ -121,21 +117,33 @@ export class CustomReply extends ChannelInstance {
 	}
 }
 
+class CustomReplyCommand implements Command {
+	constructor(private feature: FeatureCustomReply, private cmdname: string) {}
+
+	name(): string {
+		return this.cmdname
+	}
+
+	description(): string {
+		return 'custom-reply'
+	}
+
+	async command(msg: discordjs.Message, args: string[]): Promise<void> {
+		await this.feature.dispatchToChannels(msg.channel, x =>
+			(x as CustomReply).onCommand(msg, args)
+		)
+	}
+}
+
 export class FeatureCustomReply extends Feature {
-	constructor(public cmdname: string) {
+	constructor(private cmdname: string) {
 		super()
 	}
 
 	async initImpl(): Promise<void> {
 		this.registerChannel(this)
-		this.registerCommand(this)
+		this.registerCommand(new CustomReplyCommand(this, this.cmdname))
 		return Promise.resolve()
-	}
-
-	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
-		await this.dispatchToChannels(msg.channel, x =>
-			(x as CustomReply).onCommand(msg, name, args)
-		)
 	}
 
 	createChannelInstance(channel: discordjs.Channel): ChannelInstance {
