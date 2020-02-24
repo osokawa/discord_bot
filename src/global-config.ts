@@ -22,11 +22,14 @@ export default class {
 	constructor(private paths: string[]) {}
 
 	async init(): Promise<void> {
+		let config = {}
 		for (const path of this.paths) {
 			const toml = await fs.readFile(path, 'utf-8')
 			const parsed = await TOML.parse.async(toml)
-			this.config = lodash.merge(this.config, parsed)
+			config = lodash.merge(config, parsed)
 		}
+
+		this.config = config as Config
 	}
 
 	async send(
@@ -53,6 +56,11 @@ export default class {
 				templateText = value
 			} else if (value instanceof Array) {
 				const picked = utils.randomPick(value)
+
+				if (typeof picked === 'string') {
+					templateText = picked
+				}
+
 				if (picked instanceof Object) {
 					templateText = picked.text
 				}
