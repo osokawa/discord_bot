@@ -181,7 +181,7 @@ export class Images {
 			})
 
 			if (this.imageName === undefined) {
-				throw 'なんかおかしい'
+				utils.unreachable()
 			}
 
 			await fs.writeFile(this.getImagePathById(this.imageName), Buffer.from(res.data))

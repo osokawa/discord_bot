@@ -103,14 +103,14 @@ export class Game {
 
 	private _getTmpPath(filename: string): string {
 		if (this.tmpDir === undefined) {
-			throw 'なんかおかしい'
+			utils.unreachable()
 		}
 		return path.join(this.tmpDir, filename)
 	}
 
 	async _postMondai(): Promise<void> {
 		if (this.tmpDir === undefined) {
-			throw 'なんかおかしい'
+			utils.unreachable()
 		}
 
 		const episode = utils.randomPick(this.config.episodes)
@@ -178,7 +178,7 @@ export class Game {
 
 	async _pushIncorrectImageLog(): Promise<void> {
 		if (this.answer === undefined) {
-			throw 'なんかおかしい'
+			utils.unreachable()
 		}
 		if (!this._isAudioMode && this.isRepeat) {
 			const filename = this._getTmpPath(`incorrect${this.incorrectCount}.jpg`)
