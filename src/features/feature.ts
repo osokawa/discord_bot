@@ -5,7 +5,7 @@ import GlobalConfig from 'Src/global-config'
 import * as utils from 'Src/utils'
 
 export abstract class ChannelInstance {
-	protected gc: GlobalConfig
+	protected readonly gc: GlobalConfig
 	constructor(feature: Feature) {
 		this.gc = feature.gc
 	}
@@ -18,7 +18,7 @@ export interface Channel {
 }
 
 export abstract class GuildInstance {
-	protected gc: GlobalConfig
+	protected readonly gc: GlobalConfig
 	constructor(feature: Feature) {
 		this.gc = feature.gc
 	}
@@ -37,12 +37,12 @@ export interface Command {
 }
 
 export abstract class Feature {
-	private _commands: Command[] = []
-	private _guilds: Guild[] = []
-	private _channels: Channel[] = []
+	private readonly _commands: Command[] = []
+	private readonly _guilds: Guild[] = []
+	private readonly _channels: Channel[] = []
 
-	private _guildInstances: Map<string, Map<number, GuildInstance>> = new Map()
-	private _channelInstances: Map<string, Map<number, ChannelInstance>> = new Map()
+	private readonly _guildInstances: Map<string, Map<number, GuildInstance>> = new Map()
+	private readonly _channelInstances: Map<string, Map<number, ChannelInstance>> = new Map()
 
 	private _hasInitialized = false
 	private _manager: FeatureManager | undefined
@@ -83,7 +83,7 @@ export abstract class Feature {
 		return this.manager.gc
 	}
 
-	private _dispatchBase<ArrayType, IdType, InstanceType>(
+	private dispatchBase<ArrayType, IdType, InstanceType>(
 		arr: ArrayType[],
 		instancesMap: Map<IdType, Map<number, InstanceType>>,
 		id: IdType,
@@ -118,7 +118,7 @@ export abstract class Feature {
 		channel: utils.LikeTextChannel,
 		doWithInstance: (i: ChannelInstance) => Promise<void>
 	): Promise<void> {
-		const channelInstances = this._dispatchBase(
+		const channelInstances = this.dispatchBase(
 			this._channels,
 			this._channelInstances,
 			channel.id,
@@ -136,7 +136,7 @@ export abstract class Feature {
 			return
 		}
 
-		const channelInstances = this._dispatchBase(
+		const channelInstances = this.dispatchBase(
 			this._guilds,
 			this._guildInstances,
 			guild.id,
@@ -168,7 +168,7 @@ export abstract class Feature {
 	}
 
 	// init はこっちをオーバーライドして
-	abstract initImpl(): Promise<void>
+	protected abstract initImpl(): Promise<void>
 
 	// オーバライドしないで
 	async init(manager: FeatureManager): Promise<void> {

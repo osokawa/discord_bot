@@ -8,16 +8,16 @@ import * as utils from 'Src/utils'
 type Message = string | (string | { text: string; weight?: number })[]
 
 type Messages = {
-	[_: string]: Message | Messages
+	readonly [_: string]: Message | Messages
 }
 
 type Config = {
-	message: { [_: string]: Messages }
+	readonly message: { [_: string]: Messages }
 }
 
 export default class {
 	private config: Config | undefined
-	private templateCache: Map<string, lodash.TemplateExecutor> = new Map()
+	private readonly templateCache: Map<string, lodash.TemplateExecutor> = new Map()
 
 	constructor(private paths: string[]) {}
 

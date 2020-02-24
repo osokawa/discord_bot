@@ -63,19 +63,19 @@ type Answer = {
 }
 
 export class Game {
-	private _incorrectImageLog: { filename: string; answer: Answer }[] = []
+	private readonly incorrectImageLog: { filename: string; answer: Answer }[] = []
 	private answer: Answer | undefined
 	private incorrectCount = 0
 	private correctCount = 0
 	private processing = false
 	private tmpDir: string | undefined
-	private feature: FeatureMondai
+	private readonly feature: FeatureMondai
 
 	constructor(
-		private channelInstance: Mondai,
-		private _gc: GlobalConfig,
-		private mode: GameMode,
-		private options: GameOption
+		private readonly channelInstance: Mondai,
+		private readonly gc: GlobalConfig,
+		private readonly mode: GameMode,
+		private readonly options: GameOption
 	) {
 		this.feature = channelInstance.feature
 	}
@@ -92,32 +92,32 @@ export class Game {
 		return this.options.life === undefined ? 3 : this.options.life
 	}
 
-	private get _isAudioMode(): boolean {
+	private get isAudioMode(): boolean {
 		const audioModes = ['audio', 'music', 'intro']
 		return audioModes.includes(this.mode)
 	}
 
-	private get _isMosaicMode(): boolean {
+	private get isMosaicMode(): boolean {
 		return this.mode === 'mosaic'
 	}
 
-	private _getTmpPath(filename: string): string {
+	private getTmpPath(filename: string): string {
 		if (this.tmpDir === undefined) {
 			utils.unreachable()
 		}
 		return path.join(this.tmpDir, filename)
 	}
 
-	async _postMondai(): Promise<void> {
+	private async postMondai(): Promise<void> {
 		if (this.tmpDir === undefined) {
 			utils.unreachable()
 		}
 
 		const episode = utils.randomPick(this.config.episodes)
-		const outputPath = this._getTmpPath(this._isAudioMode ? 'audio.mp3' : 'image.jpg')
+		const outputPath = this.getTmpPath(this.isAudioMode ? 'audio.mp3' : 'image.jpg')
 		const mosaicOriginalPath = path.join(this.tmpDir, 'original.jpg')
 		const options: { [_: string]: string } = {}
-		if (this._isMosaicMode) {
+		if (this.isMosaicMode) {
 			options.o = mosaicOriginalPath
 		}
 		if (episode.excludeRange) {
@@ -142,7 +142,7 @@ export class Game {
 		}
 
 		const attachment = new discordjs.Attachment(outputPath)
-		await this._gc.sendToChannel(
+		await this.gc.sendToChannel(
 			this.channelInstance.channel,
 			'mondai.sendMondaiImage',
 			{},
@@ -153,7 +153,7 @@ export class Game {
 	async init(): Promise<void> {
 		this.tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mondai-'))
 		this.processing = true
-		await this._postMondai()
+		await this.postMondai()
 		this.processing = false
 	}
 
@@ -164,30 +164,30 @@ export class Game {
 		title: string
 	): Promise<void> {
 		const options: discordjs.MessageOptions = {}
-		if (this._isMosaicMode) {
-			options.files = [new discordjs.Attachment(this._getTmpPath('original.jpg'))]
+		if (this.isMosaicMode) {
+			options.files = [new discordjs.Attachment(this.getTmpPath('original.jpg'))]
 		}
 
-		await this._gc.send(
+		await this.gc.send(
 			msg,
 			'mondai.answer.' + key,
-			{ title, time: ans.time, mosaic: this._isMosaicMode },
+			{ title, time: ans.time, mosaic: this.isMosaicMode },
 			options
 		)
 	}
 
-	async _pushIncorrectImageLog(): Promise<void> {
+	private async pushIncorrectImageLog(): Promise<void> {
 		if (this.answer === undefined) {
 			utils.unreachable()
 		}
-		if (!this._isAudioMode && this.isRepeat) {
-			const filename = this._getTmpPath(`incorrect${this.incorrectCount}.jpg`)
-			await fs.copyFile(this._getTmpPath('image.jpg'), filename)
-			this._incorrectImageLog.push({ filename, answer: this.answer })
+		if (!this.isAudioMode && this.isRepeat) {
+			const filename = this.getTmpPath(`incorrect${this.incorrectCount}.jpg`)
+			await fs.copyFile(this.getTmpPath('image.jpg'), filename)
+			this.incorrectImageLog.push({ filename, answer: this.answer })
 		}
 	}
 
-	async _processAnswerMessage(msg: discordjs.Message): Promise<boolean> {
+	private async processAnswerMessage(msg: discordjs.Message): Promise<boolean> {
 		const text = normalizeAnswerMessage(msg.content)
 		const ans = this.answer
 		if (ans === undefined) {
@@ -202,7 +202,7 @@ export class Game {
 
 			if (this.isRepeat) {
 				this.correctCount++
-				await this._postMondai()
+				await this.postMondai()
 				return true
 			}
 
@@ -212,7 +212,7 @@ export class Game {
 		// 降参
 		if (new RegExp(this.config.options.surrenderPattern, 'i').exec(text)) {
 			this.incorrectCount++
-			this._pushIncorrectImageLog()
+			this.pushIncorrectImageLog()
 
 			if (this.isRepeat && this.incorrectCount == this.incorrectLimit) {
 				await this._postResultMessage(msg, 'reachedIncorrectLimit', ans, title)
@@ -222,7 +222,7 @@ export class Game {
 			await this._postResultMessage(msg, 'surrender', ans, title)
 
 			if (this.isRepeat) {
-				await this._postMondai()
+				await this.postMondai()
 				return true
 			}
 
@@ -236,12 +236,12 @@ export class Game {
 				this.incorrectCount++
 
 				if (this.incorrectCount == this.incorrectLimit) {
-					this._pushIncorrectImageLog()
+					this.pushIncorrectImageLog()
 					await this._postResultMessage(msg, 'reachedIncorrectLimit', ans, title)
 					return false
 				}
 
-				await this._gc.send(msg, 'mondai.answer.incorrect')
+				await this.gc.send(msg, 'mondai.answer.incorrect')
 
 				return true
 			}
@@ -257,26 +257,26 @@ export class Game {
 		}
 
 		this.processing = true
-		const res = await this._processAnswerMessage(msg)
+		const res = await this.processAnswerMessage(msg)
 		this.processing = false
 		return res
 	}
 
 	async finalize(): Promise<void> {
 		if (this.isRepeat) {
-			await this._gc.sendToChannel(this.channelInstance.channel, 'mondai.repeatResult', {
+			await this.gc.sendToChannel(this.channelInstance.channel, 'mondai.repeatResult', {
 				correctCount: this.correctCount,
 			})
-			if (!this._isAudioMode && 10 <= this.correctCount) {
+			if (!this.isAudioMode && 10 <= this.correctCount) {
 				const buf = await generateImageMap(
 					1920,
 					1080,
-					this._incorrectImageLog.map(x => x.filename)
+					this.incorrectImageLog.map(x => x.filename)
 				)
-				await this._gc.sendToChannel(
+				await this.gc.sendToChannel(
 					this.channelInstance.channel,
 					'mondai.incorrectImageMap',
-					{ answers: this._incorrectImageLog.map(x => x.answer) },
+					{ answers: this.incorrectImageLog.map(x => x.answer) },
 					{ files: [new discordjs.Attachment(buf, 'image.jpg')] }
 				)
 			}

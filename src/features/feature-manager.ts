@@ -5,8 +5,8 @@ import { Feature } from 'Src/features/feature'
 import * as utils from 'Src/utils'
 
 export default class {
-	private _features: Map<string, Feature> = new Map()
-	private _gc: GlobalConfig
+	private readonly _features: Map<string, Feature> = new Map()
+	private readonly _gc: GlobalConfig
 
 	constructor() {
 		this._gc = new GlobalConfig(['./config/config-default.toml', './config/config.toml'])
@@ -21,7 +21,7 @@ export default class {
 	}
 
 	async finalize(): Promise<void> {
-		await this._eachAsync(x => x.finalize())
+		await this.eachAsync(x => x.finalize())
 	}
 
 	async registerFeature(id: string, feature: Feature): Promise<void> {
@@ -29,7 +29,7 @@ export default class {
 		await feature.init(this)
 	}
 
-	private async _eachAsync(cb: (x: Feature) => Promise<void>): Promise<void> {
+	private async eachAsync(cb: (x: Feature) => Promise<void>): Promise<void> {
 		return await utils.forEachAsyncOf(this._features.values(), async feature => {
 			if (!feature.hasInitialized) {
 				return
@@ -39,11 +39,11 @@ export default class {
 	}
 
 	async command(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
-		await this._eachAsync(x => x.onCommand(msg, name, args))
+		await this.eachAsync(x => x.onCommand(msg, name, args))
 	}
 
 	async message(msg: discordjs.Message): Promise<void> {
-		await this._eachAsync(x => x.onMessage(msg))
+		await this.eachAsync(x => x.onMessage(msg))
 	}
 
 	// discord.js の message イベントからのみ呼ばれることを想定

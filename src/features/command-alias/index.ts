@@ -5,10 +5,10 @@ import FeatureManager from 'Src/features/feature-manager'
 
 class CommandAliasCommand implements Command {
 	constructor(
-		private manager: FeatureManager,
-		private from: string,
-		private toName: string,
-		private toArgs: string[]
+		private readonly manager: FeatureManager,
+		private readonly from: string,
+		private readonly toName: string,
+		private readonly toArgs: string[]
 	) {}
 
 	name(): string {
@@ -25,7 +25,11 @@ class CommandAliasCommand implements Command {
 }
 
 export default class extends Feature {
-	constructor(private from: string, private toName: string, private toArgs: string[]) {
+	constructor(
+		private readonly from: string,
+		private readonly toName: string,
+		private readonly toArgs: string[]
+	) {
 		super()
 	}
 

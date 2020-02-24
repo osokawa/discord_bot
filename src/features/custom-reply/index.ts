@@ -16,10 +16,13 @@ type Response = {
 
 export class CustomReply extends ChannelInstance {
 	private initialized = false
-	private images: Images
-	private config: Config
+	private readonly images: Images
+	private readonly config: Config
 
-	constructor(private feature: FeatureCustomReply, public channel: discordjs.Channel) {
+	constructor(
+		private readonly feature: FeatureCustomReply,
+		public readonly channel: discordjs.Channel
+	) {
 		super(feature)
 		this.images = new Images(this, this.gc)
 		this.config = new Config(this, this.gc)
@@ -31,7 +34,7 @@ export class CustomReply extends ChannelInstance {
 		this.initialized = true
 	}
 
-	async _processPickedResponse(msg: discordjs.Message, response: Response): Promise<void> {
+	private async processPickedResponse(msg: discordjs.Message, response: Response): Promise<void> {
 		if (response.action === 'do-nothing') {
 			return
 		}
@@ -85,7 +88,7 @@ export class CustomReply extends ChannelInstance {
 			for (const content of v.contents) {
 				if (new RegExp(content.target).exec(msg.content)) {
 					const response = utils.randomPick(content.responses)
-					await this._processPickedResponse(msg, response)
+					await this.processPickedResponse(msg, response)
 				}
 			}
 		}
@@ -118,7 +121,7 @@ export class CustomReply extends ChannelInstance {
 }
 
 class CustomReplyCommand implements Command {
-	constructor(private feature: FeatureCustomReply, private cmdname: string) {}
+	constructor(private readonly feature: FeatureCustomReply, private readonly cmdname: string) {}
 
 	name(): string {
 		return this.cmdname
@@ -136,7 +139,7 @@ class CustomReplyCommand implements Command {
 }
 
 export class FeatureCustomReply extends Feature {
-	constructor(private cmdname: string) {
+	constructor(private readonly cmdname: string) {
 		super()
 	}
 

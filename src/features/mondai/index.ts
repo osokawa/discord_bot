@@ -7,15 +7,15 @@ import * as utils from 'Src/utils'
 import { Game, GameOption } from 'Src/features/mondai/game'
 
 export type MondaiConfig = {
-	options: {
-		type: 'video' | 'music'
-		surrenderPattern: string
+	readonly options: {
+		readonly type: 'video' | 'music'
+		readonly surrenderPattern: string
 	}
-	episodes: {
-		filename: string
-		title: string
-		pattern: string
-		excludeRange?: string
+	readonly episodes: {
+		readonly filename: string
+		readonly title: string
+		readonly pattern: string
+		readonly excludeRange?: string
 	}[]
 }
 
@@ -23,14 +23,14 @@ export class Mondai extends ChannelInstance {
 	private game: Game | undefined
 
 	constructor(
-		public feature: FeatureMondai,
-		public channel: utils.LikeTextChannel,
-		public config: MondaiConfig
+		public readonly feature: FeatureMondai,
+		public readonly channel: utils.LikeTextChannel,
+		public readonly config: MondaiConfig
 	) {
 		super(feature)
 	}
 
-	private async _finalizeGame(): Promise<void> {
+	private async finalizeGame(): Promise<void> {
 		// 2回以上 Game.finalize() が呼ばれないようにする
 		if (this.game === undefined) {
 			return
@@ -41,7 +41,7 @@ export class Mondai extends ChannelInstance {
 		await instance.finalize()
 	}
 
-	public async onCommand(msg: discordjs.Message, rawArgs: string[]): Promise<void> {
+	async onCommand(msg: discordjs.Message, rawArgs: string[]): Promise<void> {
 		let args, options
 		try {
 			;({ args, options } = utils.parseCommandArgs(rawArgs, ['life', 'l']))
@@ -52,7 +52,7 @@ export class Mondai extends ChannelInstance {
 
 		if (this.game !== undefined) {
 			if (args.length === 1 && args[0] === 'stop') {
-				await this._finalizeGame()
+				await this.finalizeGame()
 				return
 			}
 
@@ -105,14 +105,14 @@ export class Mondai extends ChannelInstance {
 			}
 
 			if (!res) {
-				await this._finalizeGame()
+				await this.finalizeGame()
 			}
 		}
 	}
 }
 
 class FeatureMondaiCommand implements Command {
-	constructor(private feature: FeatureMondai, private cmdname: string) {}
+	constructor(private readonly feature: FeatureMondai, private readonly cmdname: string) {}
 
 	name(): string {
 		return this.cmdname
@@ -130,11 +130,11 @@ class FeatureMondaiCommand implements Command {
 export class FeatureMondai extends Feature {
 	private config: MondaiConfig | undefined
 
-	constructor(public cmdname: string, private configPath: string) {
+	constructor(public readonly cmdname: string, private readonly configPath: string) {
 		super()
 	}
 
-	async initImpl(): Promise<void> {
+	protected async initImpl(): Promise<void> {
 		this.registerChannel(this)
 		this.registerCommand(new FeatureMondaiCommand(this, this.cmdname))
 
