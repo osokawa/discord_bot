@@ -98,19 +98,13 @@ export abstract class Feature {
 				instancesMap.set(id, new Map())
 			}
 
-			const mapOfId = instancesMap.get(id)
-			if (mapOfId === undefined) {
-				utils.unreachable()
-			}
+			const mapOfId = instancesMap.get(id) ?? utils.unreachable()
 			if (!mapOfId.has(idx)) {
 				mapOfId.set(idx, createInstance(elm))
 			}
 		})
 
-		const tmp = instancesMap.get(id)
-		if (tmp === undefined) {
-			utils.unreachable()
-		}
+		const tmp = instancesMap.get(id) ?? utils.unreachable()
 		return Array.from(tmp.values())
 	}
 

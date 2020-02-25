@@ -102,20 +102,13 @@ export class Game {
 	}
 
 	private getTmpPath(filename: string): string {
-		if (this.tmpDir === undefined) {
-			utils.unreachable()
-		}
-		return path.join(this.tmpDir, filename)
+		return path.join(this.tmpDir ?? utils.unreachable(), filename)
 	}
 
 	private async postMondai(): Promise<void> {
-		if (this.tmpDir === undefined) {
-			utils.unreachable()
-		}
-
 		const episode = utils.randomPick(this.config.episodes)
 		const outputPath = this.getTmpPath(this.isAudioMode ? 'audio.mp3' : 'image.jpg')
-		const mosaicOriginalPath = path.join(this.tmpDir, 'original.jpg')
+		const mosaicOriginalPath = path.join(this.tmpDir ?? utils.unreachable(), 'original.jpg')
 		const options: { [_: string]: string } = {}
 		if (this.isMosaicMode) {
 			options.o = mosaicOriginalPath
@@ -177,22 +170,16 @@ export class Game {
 	}
 
 	private async pushIncorrectImageLog(): Promise<void> {
-		if (this.answer === undefined) {
-			utils.unreachable()
-		}
 		if (!this.isAudioMode && this.isRepeat) {
 			const filename = this.getTmpPath(`incorrect${this.incorrectCount}.jpg`)
 			await fs.copyFile(this.getTmpPath('image.jpg'), filename)
-			this.incorrectImageLog.push({ filename, answer: this.answer })
+			this.incorrectImageLog.push({ filename, answer: this.answer ?? utils.unreachable() })
 		}
 	}
 
 	private async processAnswerMessage(msg: discordjs.Message): Promise<boolean> {
 		const text = normalizeAnswerMessage(msg.content)
-		const ans = this.answer
-		if (ans === undefined) {
-			utils.unreachable()
-		}
+		const ans = this.answer ?? utils.unreachable()
 		const title = ans.title
 
 		// 正解

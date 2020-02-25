@@ -180,13 +180,11 @@ export class Images {
 				responseType: 'arraybuffer',
 			})
 
-			if (this.imageName === undefined) {
-				utils.unreachable()
-			}
+			const imageName = this.imageName ?? utils.unreachable()
 
-			await fs.writeFile(this.getImagePathById(this.imageName), Buffer.from(res.data))
-			if (!this._images.includes(this.imageName)) {
-				this._images.push(this.imageName)
+			await fs.writeFile(this.getImagePathById(imageName), Buffer.from(res.data))
+			if (!this._images.includes(imageName)) {
+				this._images.push(imageName)
 				this._images.sort()
 			}
 			await this.gc.send(msg, 'customReply.images.uploadingComplete')

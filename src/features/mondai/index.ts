@@ -144,10 +144,6 @@ export class FeatureMondai extends Feature {
 	}
 
 	createChannelInstance(channel: utils.LikeTextChannel): ChannelInstance {
-		if (this.config === undefined) {
-			utils.unreachable()
-		}
-
-		return new Mondai(this, channel, this.config)
+		return new Mondai(this, channel, this.config ?? utils.unreachable())
 	}
 }

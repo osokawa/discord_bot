@@ -70,10 +70,7 @@ export default class {
 		if (!this.templateCache.has(templateText)) {
 			this.templateCache.set(templateText, lodash.template(templateText))
 		}
-		const compiledTemplate = this.templateCache.get(templateText)
-		if (compiledTemplate === undefined) {
-			utils.unreachable()
-		}
+		const compiledTemplate = this.templateCache.get(templateText) ?? utils.unreachable()
 		let text = compiledTemplate(args)
 		if ('guild' in channel) {
 			text = utils.replaceEmoji(text, channel.guild.emojis)
