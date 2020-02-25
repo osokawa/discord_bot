@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs'
 import TOML from '@iarna/toml'
-import * as lodash from 'lodash'
+import lodash from 'lodash'
 import * as discordjs from 'discord.js'
 
 import * as utils from 'Src/utils'
