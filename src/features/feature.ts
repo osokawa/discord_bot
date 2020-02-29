@@ -36,6 +36,58 @@ export interface Command {
 	command(msg: discordjs.Message, args: string[]): Promise<void>
 }
 
+export interface FeatureEventResult {
+	preventNext?: boolean
+	continuation?: () => Promise<void>
+	context?: FeatureEventContext
+}
+
+export type FeatureEventContext = { [key: string]: any }
+
+export interface FeatureInterface {
+	preInit(manager: FeatureManager): void
+	init(manager: FeatureManager): Promise<void>
+	finalize(): Promise<void>
+	priority: number
+
+	onMessage(msg: discordjs.Message, context: FeatureEventContext): FeatureEventResult
+
+	hasInitialized(): boolean
+}
+
+export class FeatureBase implements FeatureInterface {
+	private _hasInitialized = false
+	protected _manager: FeatureManager | undefined
+
+	preInit(manager: FeatureManager): void {
+		// 必要ならオーバーライドしてね
+	}
+
+	// init はこっちをオーバーライドして
+	protected initImpl(): Promise<void> {
+		return Promise.resolve()
+	}
+
+	async init(manager: FeatureManager): Promise<void> {
+		this._manager = manager
+		await this.initImpl()
+		this._hasInitialized = true
+	}
+
+	finalize(): Promise<void> {
+		return Promise.resolve()
+	}
+	priority = 0
+
+	onMessage(msg: discordjs.Message, context: FeatureEventContext): FeatureEventResult {
+		return {}
+	}
+
+	hasInitialized(): boolean {
+		return this._hasInitialized
+	}
+}
+
 export abstract class Feature {
 	private readonly _commands: Command[] = []
 	private readonly _guilds: Guild[] = []

@@ -1,12 +1,26 @@
 import * as discordjs from 'discord.js'
 
 import GlobalConfig from 'Src/global-config'
-import { Feature } from 'Src/features/feature'
+import { FeatureInterface, FeatureEventContext, FeatureEventResult } from 'Src/features/feature'
 import * as utils from 'Src/utils'
 
+type State =
+	| 'constructed'
+	| 'preInitializing'
+	| 'preInitialized'
+	| 'initialized'
+	| 'finalized'
+	| 'error'
+
 export default class {
-	private readonly _features: Map<string, Feature> = new Map()
+	private readonly features: Map<string, FeatureInterface> = new Map()
 	private readonly _gc: GlobalConfig
+	private sorteadFeatures: FeatureInterface[] = []
+	private _state: State = 'constructed'
+
+	get state(): State {
+		return this._state
+	}
 
 	constructor() {
 		this._gc = new GlobalConfig(['./config/config-default.toml', './config/config.toml'])
@@ -17,50 +31,114 @@ export default class {
 	}
 
 	async init(): Promise<void> {
-		await this._gc.init()
+		if (this.state !== 'constructed') {
+			throw Error('init() の呼び出しがおかしい')
+		}
+
+		this._state = 'preInitializing'
+
+		try {
+			try {
+				for (const feature of this.features.values()) {
+					feature.preInit(this)
+				}
+			} catch (e) {
+				throw Error(`failed to pre initialize: ${e}`)
+			}
+
+			this._state = 'preInitialized'
+
+			this.sorteadFeatures = Array.from(this.features.values()).sort(
+				(a, b) => b.priority - a.priority
+			)
+
+			try {
+				for (const feature of this.sorteadFeatures) {
+					await feature.init(this)
+				}
+			} catch (e) {
+				throw Error(`failed to initialize: ${e}`)
+			}
+
+			await this._gc.init()
+		} catch (e) {
+			this._state = 'error'
+			throw e
+		}
+
+		this._state = 'initialized'
 	}
 
 	async finalize(): Promise<void> {
-		await this.eachAsync(x => x.finalize())
+		if (this.state !== 'initialized') {
+			throw Error('駄目なタイミング')
+		}
+
+		// 初期化と逆順に処理
+		for (let i = this.sorteadFeatures.length; 0 <= --i; ) {
+			await this.sorteadFeatures[i].finalize()
+		}
+		this._state = 'finalized'
 	}
 
-	async registerFeature(id: string, feature: Feature): Promise<void> {
-		this._features.set(id, feature)
-		await feature.init(this)
+	registerFeature(id: string, feature: FeatureInterface): boolean {
+		if (this.state !== 'constructed' && this.state !== 'preInitializing') {
+			throw Error('タイミング駄目')
+		}
+
+		if (this.features.has(id)) {
+			return false
+		}
+
+		this.features.set(id, feature)
+		if (this.state === 'preInitializing') {
+			feature.preInit(this)
+		}
+
+		return true
 	}
 
-	private async eachAsync(cb: (x: Feature) => Promise<void>): Promise<void> {
-		return await utils.forEachAsyncOf(this._features.values(), async feature => {
-			if (!feature.hasInitialized) {
-				return
-			}
-			await cb(feature)
-		})
-	}
-
-	async command(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
-		await this.eachAsync(x => x.onCommand(msg, name, args))
+	getFeature<T extends FeatureInterface>(id: string): T {
+		return this.features.get(id) as T
 	}
 
 	async message(msg: discordjs.Message): Promise<void> {
-		await this.eachAsync(x => x.onMessage(msg))
+		if (this.state !== 'initialized') {
+			throw Error('なんかタイミングがおかしい')
+		}
+
+		let context: FeatureEventContext = {}
+		const continuations = []
+
+		for (const feature of this.sorteadFeatures) {
+			const res = feature.onMessage(msg, context)
+			context = res.context ?? context
+
+			if ('continuation' in res) {
+				continuations.push(res.continuation)
+			}
+
+			if (res.preventNext) {
+				break
+			}
+		}
+
+		await Promise.all(continuations)
 	}
 
 	// discord.js の message イベントからのみ呼ばれることを想定
 	async onMessage(msg: discordjs.Message): Promise<void> {
+		if (this.state !== 'initialized') {
+			throw Error('なんかタイミングがおかしい')
+		}
+
+		// とりあえず入れとく
 		if (msg.author.bot) {
 			return
 		}
 
-		const command = utils.parseCommand(msg.content)
-
 		try {
-			if (command) {
-				const { commandName, args } = command
-				await this.command(msg, commandName, args)
-			} else {
-				await this.message(msg)
-			}
+			await this.message(msg)
 		} catch (e) {
 			console.error(e)
 			await msg.channel.send('bot の処理中にエラーが発生しました')
