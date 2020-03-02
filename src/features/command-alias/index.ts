@@ -1,11 +1,11 @@
 import * as discordjs from 'discord.js'
 
-import { Feature, Command } from 'Src/features/feature'
-import FeatureManager from 'Src/features/feature-manager'
+import CommonFeatureBase from 'Src/features/common-feature-base'
+import { FeatureCommand, Command } from 'Src/features/command'
 
 class CommandAliasCommand implements Command {
 	constructor(
-		private readonly manager: FeatureManager,
+		private readonly featureCommand: FeatureCommand,
 		private readonly from: string,
 		private readonly toName: string,
 		private readonly toArgs: string[]
@@ -20,11 +20,11 @@ class CommandAliasCommand implements Command {
 	}
 
 	async command(msg: discordjs.Message, args: string[]): Promise<void> {
-		await this.manager.command(msg, this.toName, [...this.toArgs, ...args])
+		await this.featureCommand.command(msg, this.toName, [...this.toArgs, ...args])
 	}
 }
 
-export default class extends Feature {
+export default class extends CommonFeatureBase {
 	constructor(
 		private readonly from: string,
 		private readonly toName: string,
@@ -33,10 +33,11 @@ export default class extends Feature {
 		super()
 	}
 
-	async initImpl(): Promise<void> {
-		this.registerCommand(
-			new CommandAliasCommand(this.manager, this.from, this.toName, this.toArgs)
+	protected initImpl(): Promise<void> {
+		this.featureCommand.registerCommand(
+			new CommandAliasCommand(this.featureCommand, this.from, this.toName, this.toArgs)
 		)
+
 		return Promise.resolve()
 	}
 }

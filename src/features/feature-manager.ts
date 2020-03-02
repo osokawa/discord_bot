@@ -1,8 +1,7 @@
 import * as discordjs from 'discord.js'
 
 import GlobalConfig from 'Src/global-config'
-import { FeatureInterface, FeatureEventContext, FeatureEventResult } from 'Src/features/feature'
-import * as utils from 'Src/utils'
+import { FeatureInterface, FeatureEventContext } from 'Src/features/feature'
 
 type State =
 	| 'constructed'
@@ -81,7 +80,7 @@ export default class {
 		this._state = 'finalized'
 	}
 
-	registerFeature<T extends FeatureInterface>(id: string, feature: T): T {
+	registerFeature<T extends FeatureInterface>(id: string, featureConstructor: () => T): T {
 		if (this.state !== 'constructed' && this.state !== 'preInitializing') {
 			throw Error('タイミング駄目')
 		}
@@ -91,6 +90,7 @@ export default class {
 			return gotFeature as T
 		}
 
+		const feature = featureConstructor()
 		this.features.set(id, feature)
 		if (this.state === 'preInitializing') {
 			feature.preInit(this)
@@ -109,14 +109,14 @@ export default class {
 		}
 
 		let context: FeatureEventContext = {}
-		const continuations = []
+		const continuations: (() => Promise<void>)[] = []
 
 		for (const feature of this.sorteadFeatures) {
 			const res = feature.onMessage(msg, context)
 			context = res.context ?? context
 
 			if ('continuation' in res) {
-				continuations.push(res.continuation)
+				continuations.push(res.continuation!)
 			}
 
 			if (res.preventNext) {
@@ -124,7 +124,13 @@ export default class {
 			}
 		}
 
-		await Promise.all(continuations)
+		const errors: any[] = []
+
+		await Promise.all(continuations.map(f => f().catch(e => errors.push(e))))
+
+		if (errors.length !== 0) {
+			throw errors
+		}
 	}
 
 	// discord.js の message イベントからのみ呼ばれることを想定
