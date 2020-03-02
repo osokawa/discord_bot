@@ -3,6 +3,8 @@ import * as discordjs from 'discord.js'
 import GlobalConfig from 'Src/global-config'
 import { FeatureInterface, FeatureEventContext } from 'Src/features/feature'
 
+import * as utils from 'Src/utils'
+
 type State =
 	| 'constructed'
 	| 'preInitializing'
@@ -115,6 +117,7 @@ export default class {
 			const res = feature.onMessage(msg, context)
 			context = res.context ?? context
 
+			// TODO: これなんで?
 			if ('continuation' in res) {
 				continuations.push(res.continuation!)
 			}
@@ -124,13 +127,7 @@ export default class {
 			}
 		}
 
-		const errors: any[] = []
-
-		await Promise.all(continuations.map(f => f().catch(e => errors.push(e))))
-
-		if (errors.length !== 0) {
-			throw errors
-		}
+		await utils.forEachAsyncOf(continuations, f => f())
 	}
 
 	// discord.js の message イベントからのみ呼ばれることを想定
