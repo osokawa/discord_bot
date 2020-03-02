@@ -81,13 +81,14 @@ export default class {
 		this._state = 'finalized'
 	}
 
-	registerFeature(id: string, feature: FeatureInterface): boolean {
+	registerFeature<T extends FeatureInterface>(id: string, feature: T): T {
 		if (this.state !== 'constructed' && this.state !== 'preInitializing') {
 			throw Error('タイミング駄目')
 		}
 
-		if (this.features.has(id)) {
-			return false
+		const gotFeature = this.features.get(id)
+		if (gotFeature) {
+			return gotFeature as T
 		}
 
 		this.features.set(id, feature)
@@ -95,7 +96,7 @@ export default class {
 			feature.preInit(this)
 		}
 
-		return true
+		return feature
 	}
 
 	getFeature<T extends FeatureInterface>(id: string): T {

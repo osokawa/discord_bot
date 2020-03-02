@@ -48,7 +48,7 @@ export interface FeatureInterface {
 	preInit(manager: FeatureManager): void
 	init(manager: FeatureManager): Promise<void>
 	finalize(): Promise<void>
-	priority: number
+	readonly priority: number
 
 	onMessage(msg: discordjs.Message, context: FeatureEventContext): FeatureEventResult
 
@@ -61,6 +61,10 @@ export class FeatureBase implements FeatureInterface {
 
 	preInit(manager: FeatureManager): void {
 		// 必要ならオーバーライドしてね
+	}
+
+	protected get manager(): FeatureManager {
+		return this._manager ?? utils.unreachable()
 	}
 
 	// init はこっちをオーバーライドして

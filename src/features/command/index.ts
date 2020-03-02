@@ -10,7 +10,8 @@ export interface Command {
 }
 
 export class FeatureCommand extends FeatureBase {
-	private commands: Command[] = []
+	private readonly commands: Command[] = []
+	readonly priority = 10000
 
 	registerCommand(command: Command): void {
 		this.commands.push(command)
