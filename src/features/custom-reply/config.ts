@@ -14,7 +14,7 @@ function validateParsedConfig(config: any): boolean {
 
 function isValidId(id: string): boolean {
 	const validIdRegExp = /^[a-zA-Z1-9-_]{2,32}$/
-	return validIdRegExp.exec(id) ? true : false
+	return validIdRegExp.test(id)
 }
 
 export default class {

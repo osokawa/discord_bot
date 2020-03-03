@@ -1,13 +1,9 @@
 import * as discordjs from 'discord.js'
 
-import { Feature, ChannelInstance } from 'Src/features/feature'
+import CommonFeatureBase from 'Src/features/common-feature-base'
 
-class SimpleReply extends ChannelInstance {
-	constructor(private feature: FeatureSimpleReply) {
-		super(feature)
-	}
-
-	async onMessage(msg: discordjs.Message): Promise<void> {
+export class FeatureSimpleReply extends CommonFeatureBase {
+	async onMessageImpl(msg: discordjs.Message): Promise<void> {
 		if (msg.content === 'ping') {
 			msg.reply('Pong!')
 		}
@@ -16,16 +12,5 @@ class SimpleReply extends ChannelInstance {
 			const attachment = new discordjs.Attachment('./assets/chino.png')
 			await msg.reply('わかる', { files: [attachment] })
 		}
-	}
-}
-
-export class FeatureSimpleReply extends Feature {
-	async initImpl(): Promise<void> {
-		this.registerChannel(this)
-		return Promise.resolve()
-	}
-
-	createChannelInstance(): ChannelInstance {
-		return new SimpleReply(this)
 	}
 }

@@ -12,11 +12,11 @@ client.on('ready', () => {
 	;(async (): Promise<void> => {
 		console.log(`Logged in as ${client.user.tag}!`)
 
-		await featureManager.init()
-
 		for (const [k, v] of features) {
-			await featureManager.registerFeature(k, v)
+			featureManager.registerFeature(k, () => v)
 		}
+
+		await featureManager.init()
 
 		ready = true
 	})()

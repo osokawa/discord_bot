@@ -2,7 +2,11 @@ import { promises as fs } from 'fs'
 import TOML from '@iarna/toml'
 import * as discordjs from 'discord.js'
 
-import { Feature, Command, ChannelInstance } from 'Src/features/feature'
+import CommonFeatureBase from 'Src/features/common-feature-base'
+import { Command } from 'Src/features/command'
+import { StorageType } from 'Src/features/storage'
+import GlobalConfig from 'Src/global-config'
+
 import * as utils from 'Src/utils'
 import { Game, GameOption } from 'Src/features/mondai/game'
 
@@ -19,15 +23,16 @@ export type MondaiConfig = {
 	}[]
 }
 
-export class Mondai extends ChannelInstance {
+export class Mondai {
 	private game: Game | undefined
+	private gc: GlobalConfig
 
 	constructor(
 		public readonly feature: FeatureMondai,
 		public readonly channel: utils.LikeTextChannel,
 		public readonly config: MondaiConfig
 	) {
-		super(feature)
+		this.gc = feature.manager.gc
 	}
 
 	private async finalizeGame(): Promise<void> {
@@ -123,27 +128,39 @@ class FeatureMondaiCommand implements Command {
 	}
 
 	async command(msg: discordjs.Message, args: string[]): Promise<void> {
-		await this.feature.dispatchToChannels(msg.channel, x => (x as Mondai).onCommand(msg, args))
+		await this.feature.storageDriver
+			.channel(msg)
+			.get<Mondai>('mondai')
+			.onCommand(msg, args)
 	}
 }
 
-export class FeatureMondai extends Feature {
-	private config: MondaiConfig | undefined
+export class FeatureMondai extends CommonFeatureBase {
+	private config!: MondaiConfig
 
 	constructor(public readonly cmdname: string, private readonly configPath: string) {
 		super()
 	}
 
 	protected async initImpl(): Promise<void> {
-		this.registerChannel(this)
-		this.registerCommand(new FeatureMondaiCommand(this, this.cmdname))
+		this.storageDriver.setChannelStorageConstructor(
+			ch =>
+				new StorageType(
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					new Map<string, any>([['mondai', new Mondai(this, ch, this.config)]])
+				)
+		)
+		this.featureCommand.registerCommand(new FeatureMondaiCommand(this, this.cmdname))
 
 		const toml = await fs.readFile(this.configPath, 'utf-8')
 		const parsed = await TOML.parse.async(toml)
 		this.config = parsed as MondaiConfig
 	}
 
-	createChannelInstance(channel: utils.LikeTextChannel): ChannelInstance {
-		return new Mondai(this, channel, this.config ?? utils.unreachable())
+	async onMessageImpl(msg: discordjs.Message): Promise<void> {
+		await this.storageDriver
+			.channel(msg)
+			.get<Mondai>('mondai')
+			.onMessage(msg)
 	}
 }

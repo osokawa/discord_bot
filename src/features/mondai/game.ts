@@ -197,7 +197,7 @@ export class Game {
 		}
 
 		// 降参
-		if (new RegExp(this.config.options.surrenderPattern, 'i').exec(text)) {
+		if (new RegExp(this.config.options.surrenderPattern, 'i').test(text)) {
 			this.incorrectCount++
 			this.pushIncorrectImageLog()
 
