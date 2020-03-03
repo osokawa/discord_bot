@@ -47,7 +47,7 @@ export class CustomReply {
 		if (response.action === 'gacha') {
 			let list = this.images.images
 			if (response.pattern) {
-				list = list.filter(x => new RegExp(response.pattern).exec(x))
+				list = list.filter(x => new RegExp(response.pattern).test(x))
 			}
 
 			if (list.length === 0) {
@@ -88,7 +88,7 @@ export class CustomReply {
 	async _processCustomResponse(msg: discordjs.Message): Promise<void> {
 		for (const [, v] of this.config.config) {
 			for (const content of v.contents) {
-				if (new RegExp(content.target).exec(msg.content)) {
+				if (new RegExp(content.target).test(msg.content)) {
 					const response = utils.randomPick(content.responses)
 					await this.processPickedResponse(msg, response)
 				}

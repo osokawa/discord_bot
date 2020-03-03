@@ -8,7 +8,7 @@ import { CustomReply } from 'src/features/custom-reply'
 
 export function isValidImageId(id: string): boolean {
 	const validImageIdRegExp = /^[a-zA-Z0-9-_]{2,32}\.(png|jpg|jpeg|gif)$/
-	return validImageIdRegExp.exec(id) ? true : false
+	return validImageIdRegExp.test(id)
 }
 
 export class Images {
@@ -67,7 +67,7 @@ export class Images {
 
 		const search = utils.getOption(options, ['s', 'search'])
 		const images = search
-			? this._images.filter(x => new RegExp(search as string).exec(x))
+			? this._images.filter(x => new RegExp(search as string).test(x))
 			: this._images
 
 		if (images.length === 0) {
