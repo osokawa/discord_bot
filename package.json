@@ -5,6 +5,7 @@
   "scripts": {
     "build": "webpack --mode=development",
     "start": "webpack --mode=development && node -r dotenv/config dist/main.js",
+    "watch": "webpack --mode=development --watch",
     "test": "jest"
   },
   "license": "MIT",
