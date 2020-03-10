@@ -12,12 +12,6 @@ module.exports = {
 	module: {
 		rules: [
 			{
-				enforce: 'pre',
-				test: /\.(ts|js)$/,
-				exclude: /node_modules/,
-				loader: 'eslint-loader',
-			},
-			{
 				test: /\.ts$/,
 				loader: 'ts-loader'
 			}
