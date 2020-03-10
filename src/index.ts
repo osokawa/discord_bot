@@ -12,11 +12,15 @@ client.on('ready', () => {
 	;(async (): Promise<void> => {
 		console.log(`Logged in as ${client.user!.tag}!`)
 
-		for (const [k, v] of features) {
-			featureManager.registerFeature(k, () => v)
-		}
+		try {
+			for (const [k, v] of features) {
+				featureManager.registerFeature(k, () => v)
+			}
 
-		await featureManager.init()
+			await featureManager.init()
+		} catch (e) {
+			process.exit(1)
+		}
 
 		ready = true
 	})()
@@ -39,6 +43,7 @@ process.on('SIGINT', () => {
 		client.destroy()
 		await featureManager.finalize()
 		console.log('discord bot was shut down.')
+		process.exit(0)
 	})()
 })
 
