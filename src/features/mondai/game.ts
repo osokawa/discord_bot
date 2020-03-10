@@ -134,12 +134,11 @@ export class Game {
 			throw Error(e)
 		}
 
-		const attachment = new discordjs.Attachment(outputPath)
 		await this.gc.sendToChannel(
 			this.channelInstance.channel,
 			'mondai.sendMondaiImage',
 			{},
-			{ files: [attachment] }
+			{ files: [outputPath] }
 		)
 	}
 
@@ -158,7 +157,7 @@ export class Game {
 	): Promise<void> {
 		const options: discordjs.MessageOptions = {}
 		if (this.isMosaicMode) {
-			options.files = [new discordjs.Attachment(this.getTmpPath('original.jpg'))]
+			options.files = [this.getTmpPath('original.jpg')]
 		}
 
 		await this.gc.send(
@@ -264,7 +263,7 @@ export class Game {
 					this.channelInstance.channel,
 					'mondai.incorrectImageMap',
 					{ answers: this.incorrectImageLog.map(x => x.answer) },
-					{ files: [new discordjs.Attachment(buf, 'image.jpg')] }
+					{ files: [buf] }
 				)
 			}
 		}

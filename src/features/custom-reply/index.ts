@@ -54,9 +54,7 @@ export class CustomReply {
 				await this.gc.send(msg, 'customReply.gachaImageNotFound')
 				return
 			}
-			options.files = [
-				new discordjs.Attachment(this.images.getImagePathById(utils.randomPick(list))),
-			]
+			options.files = [this.images.getImagePathById(utils.randomPick(list))]
 		} else {
 			const imageId = response.image
 			if (imageId) {
@@ -72,12 +70,13 @@ export class CustomReply {
 					await this.gc.send(msg, 'customReply.imageIdThatDoesNotExist', { imageId })
 					return
 				}
-				const attachment = new discordjs.Attachment(path)
-				options.files = [attachment]
+				options.files = [path]
 			}
 		}
 
-		text = utils.replaceEmoji(text, msg.guild.emojis)
+		if (msg.guild) {
+			text = utils.replaceEmoji(text, msg.guild.emojis)
+		}
 		if (response.reply !== undefined && !response.reply) {
 			msg.channel.send(text, options)
 		} else {

@@ -1,16 +1,16 @@
-import { Client } from 'discord.js'
+import discordjs from 'discord.js'
 
 import FeatureManager from 'Src/features/feature-manager'
 import features from '../config/features'
 
-const client = new Client()
+const client = new discordjs.Client()
 const featureManager = new FeatureManager()
 
 let ready = false
 
 client.on('ready', () => {
 	;(async (): Promise<void> => {
-		console.log(`Logged in as ${client.user.tag}!`)
+		console.log(`Logged in as ${client.user!.tag}!`)
 
 		for (const [k, v] of features) {
 			featureManager.registerFeature(k, () => v)
@@ -28,7 +28,9 @@ client.on('message', msg => {
 			return
 		}
 
-		await featureManager.onMessage(msg)
+		if (!msg.partial) {
+			await featureManager.onMessage(msg)
+		}
 	})()
 })
 

@@ -181,12 +181,9 @@ export async function subCommandProxy(
 	}
 }
 
-export function replaceEmoji(
-	text: string,
-	emojis: discordjs.Collection<discordjs.Snowflake, discordjs.Emoji>
-): string {
+export function replaceEmoji(text: string, emojis: discordjs.GuildEmojiManager): string {
 	return text.replace(/:(\w+):/g, (match, emojiName) => {
-		const foundEmoji = emojis.find(x => x.name === emojiName)
+		const foundEmoji = emojis.cache.find(x => x.name === emojiName)
 		return foundEmoji ? foundEmoji.toString() : match
 	})
 }
@@ -220,4 +217,4 @@ export async function forEachAsyncOf<T>(
 	}
 }
 
-export type LikeTextChannel = discordjs.TextChannel | discordjs.GroupDMChannel | discordjs.DMChannel
+export type LikeTextChannel = discordjs.TextChannel | discordjs.DMChannel

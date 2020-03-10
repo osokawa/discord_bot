@@ -9,8 +9,7 @@ export class FeatureSimpleReply extends CommonFeatureBase {
 		}
 
 		if (msg.content.includes('チノちゃんかわいい')) {
-			const attachment = new discordjs.Attachment('./assets/chino.png')
-			await msg.reply('わかる', { files: [attachment] })
+			await msg.reply('わかる', { files: ['./assets/chino.png'] })
 		}
 	}
 }

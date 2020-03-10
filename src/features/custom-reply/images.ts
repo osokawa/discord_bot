@@ -144,7 +144,7 @@ export class Images {
 			'customReply.images.sendPreview',
 			{},
 			{
-				files: [new discordjs.Attachment(this.getImagePathById(args[0]))],
+				files: [this.getImagePathById(args[0])],
 			}
 		)
 	}
@@ -170,13 +170,14 @@ export class Images {
 
 	async processImageUpload(msg: discordjs.Message): Promise<void> {
 		if (this.state === 'waitingImage') {
-			if (msg.attachments.size !== 1) {
+			const firstAttachment = msg.attachments.first()
+			if (firstAttachment === undefined) {
 				return
 			}
 
 			const res = await axios({
 				method: 'get',
-				url: msg.attachments.first().url,
+				url: firstAttachment.url,
 				responseType: 'arraybuffer',
 			})
 
