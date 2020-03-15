@@ -1,21 +1,25 @@
-import { Client } from 'discord.js'
-const client = new Client()
+import discordjs from 'discord.js'
 
-import FeatureManager from './features/feature-manager'
+import FeatureManager from 'Src/features/feature-manager'
 import features from '../config/features'
 
+const client = new discordjs.Client()
 const featureManager = new FeatureManager()
 
 let ready = false
 
 client.on('ready', () => {
 	;(async (): Promise<void> => {
-		console.log(`Logged in as ${client.user.tag}!`)
+		console.log(`Logged in as ${client.user!.tag}!`)
 
-		await featureManager.init()
+		try {
+			for (const [k, v] of features) {
+				featureManager.registerFeature(k, () => v)
+			}
 
-		for (const [k, v] of features) {
-			await featureManager.registerFeature(k, v)
+			await featureManager.init()
+		} catch (e) {
+			process.exit(1)
 		}
 
 		ready = true
@@ -28,7 +32,9 @@ client.on('message', msg => {
 			return
 		}
 
-		await featureManager.onMessage(msg)
+		if (!msg.partial) {
+			await featureManager.onMessage(msg)
+		}
 	})()
 })
 
@@ -37,6 +43,7 @@ process.on('SIGINT', () => {
 		client.destroy()
 		await featureManager.finalize()
 		console.log('discord bot was shut down.')
+		process.exit(0)
 	})()
 })
 

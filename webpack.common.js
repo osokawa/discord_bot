@@ -12,18 +12,15 @@ module.exports = {
 	module: {
 		rules: [
 			{
-				enforce: 'pre',
-				test: /\.(ts|js)$/,
-				exclude: /node_modules/,
-				loader: 'eslint-loader',
-			},
-			{
 				test: /\.ts$/,
 				loader: 'ts-loader'
 			}
 		]
 	},
 	resolve: {
-		extensions: ['.wasm', '.ts', '.mjs', '.js', '.json']
+		extensions: ['.wasm', '.ts', '.mjs', '.js', '.json'],
+		alias: {
+			Src: path.resolve(__dirname, 'src/')
+		}
 	}
 }

@@ -1,13 +1,27 @@
-import * as utils from '../utils'
-
-import GlobalConfig from '../global-config'
-
 import * as discordjs from 'discord.js'
-import { Feature } from './feature'
+
+import GlobalConfig from 'Src/global-config'
+import { FeatureInterface, FeatureEventContext } from 'Src/features/feature'
+
+import * as utils from 'Src/utils'
+
+type State =
+	| 'constructed'
+	| 'preInitializing'
+	| 'preInitialized'
+	| 'initialized'
+	| 'finalized'
+	| 'error'
 
 export default class {
-	private _features: Map<string, Feature> = new Map()
-	private _gc: GlobalConfig
+	private readonly features: Map<string, FeatureInterface> = new Map()
+	private readonly _gc: GlobalConfig
+	private sorteadFeatures: FeatureInterface[] = []
+	private _state: State = 'constructed'
+
+	get state(): State {
+		return this._state
+	}
 
 	constructor() {
 		this._gc = new GlobalConfig(['./config/config-default.toml', './config/config.toml'])
@@ -18,50 +32,117 @@ export default class {
 	}
 
 	async init(): Promise<void> {
-		await this._gc.init()
+		if (this.state !== 'constructed') {
+			throw Error('init() の呼び出しがおかしい')
+		}
+
+		this._state = 'preInitializing'
+
+		try {
+			try {
+				for (const feature of this.features.values()) {
+					feature.preInit(this)
+				}
+			} catch (e) {
+				throw Error(`failed to pre initialize: ${e}`)
+			}
+
+			this._state = 'preInitialized'
+
+			this.sorteadFeatures = Array.from(this.features.values()).sort(
+				(a, b) => b.priority - a.priority
+			)
+
+			try {
+				for (const feature of this.sorteadFeatures) {
+					await feature.init(this)
+				}
+			} catch (e) {
+				throw Error(`failed to initialize: ${e}`)
+			}
+
+			await this._gc.init()
+		} catch (e) {
+			this._state = 'error'
+			throw e
+		}
+
+		this._state = 'initialized'
 	}
 
 	async finalize(): Promise<void> {
-		await this._eachAsync(x => x.finalize())
+		if (this.state !== 'initialized') {
+			throw Error('駄目なタイミング')
+		}
+
+		// 初期化と逆順に処理
+		for (let i = this.sorteadFeatures.length; 0 <= --i; ) {
+			await this.sorteadFeatures[i].finalize()
+		}
+		this._state = 'finalized'
 	}
 
-	async registerFeature(id: string, feature: Feature): Promise<void> {
-		this._features.set(id, feature)
-		await feature.init(this)
+	registerFeature<T extends FeatureInterface>(id: string, featureConstructor: () => T): T {
+		if (this.state !== 'constructed' && this.state !== 'preInitializing') {
+			throw Error('タイミング駄目')
+		}
+
+		const gotFeature = this.features.get(id)
+		if (gotFeature) {
+			return gotFeature as T
+		}
+
+		const feature = featureConstructor()
+		this.features.set(id, feature)
+		if (this.state === 'preInitializing') {
+			feature.preInit(this)
+		}
+
+		return feature
 	}
 
-	private async _eachAsync(cb: (x: Feature) => Promise<void>): Promise<void> {
-		return await utils.forEachAsyncOf(this._features.values(), async feature => {
-			if (!feature.hasInitialized) {
-				return
-			}
-			await cb(feature)
-		})
-	}
-
-	async command(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
-		await this._eachAsync(x => x.onCommand(msg, name, args))
+	getFeature<T extends FeatureInterface>(id: string): T {
+		return this.features.get(id) as T
 	}
 
 	async message(msg: discordjs.Message): Promise<void> {
-		await this._eachAsync(x => x.onMessage(msg))
+		if (this.state !== 'initialized') {
+			throw Error('なんかタイミングがおかしい')
+		}
+
+		let context: FeatureEventContext = {}
+		const continuations: (() => Promise<void>)[] = []
+
+		for (const feature of this.sorteadFeatures) {
+			const res = feature.onMessage(msg, context)
+			context = res.context ?? context
+
+			// TODO: これなんで?
+			if ('continuation' in res) {
+				continuations.push(res.continuation!)
+			}
+
+			if (res.preventNext) {
+				break
+			}
+		}
+
+		await utils.forEachAsyncOf(continuations, f => f())
 	}
 
 	// discord.js の message イベントからのみ呼ばれることを想定
 	async onMessage(msg: discordjs.Message): Promise<void> {
+		if (this.state !== 'initialized') {
+			throw Error('なんかタイミングがおかしい')
+		}
+
+		// とりあえず入れとく
 		if (msg.author.bot) {
 			return
 		}
 
-		const command = utils.parseCommand(msg.content)
-
 		try {
-			if (command) {
-				const { commandName, args } = command
-				await this.command(msg, commandName, args)
-			} else {
-				await this.message(msg)
-			}
+			await this.message(msg)
 		} catch (e) {
 			console.error(e)
 			await msg.channel.send('bot の処理中にエラーが発生しました')

@@ -1,37 +1,41 @@
 import { promises as fs } from 'fs'
-import * as utils from '../../utils'
 import TOML from '@iarna/toml'
-import { Game, GameOption } from './game'
-
-import { Feature, ChannelInstance } from '../feature'
-
 import * as discordjs from 'discord.js'
 
+import CommonFeatureBase from 'Src/features/common-feature-base'
+import { Command } from 'Src/features/command'
+import { StorageType } from 'Src/features/storage'
+import GlobalConfig from 'Src/global-config'
+
+import * as utils from 'Src/utils'
+import { Game, GameOption } from 'Src/features/mondai/game'
+
 export type MondaiConfig = {
-	options: {
-		type: 'video' | 'music'
-		surrenderPattern: string
+	readonly options: {
+		readonly type: 'video' | 'music'
+		readonly surrenderPattern: string
 	}
-	episodes: {
-		filename: string
-		title: string
-		pattern: string
-		excludeRange?: string
+	readonly episodes: {
+		readonly filename: string
+		readonly title: string
+		readonly pattern: string
+		readonly excludeRange?: string
 	}[]
 }
 
-export class Mondai extends ChannelInstance {
+export class Mondai {
 	private game: Game | undefined
+	private gc: GlobalConfig
 
 	constructor(
-		public feature: FeatureMondai,
-		public channel: utils.LikeTextChannel,
-		public config: MondaiConfig
+		public readonly feature: FeatureMondai,
+		public readonly channel: utils.LikeTextChannel,
+		public readonly config: MondaiConfig
 	) {
-		super(feature)
+		this.gc = feature.manager.gc
 	}
 
-	private async _finalizeGame(): Promise<void> {
+	private async finalizeGame(): Promise<void> {
 		// 2回以上 Game.finalize() が呼ばれないようにする
 		if (this.game === undefined) {
 			return
@@ -42,11 +46,7 @@ export class Mondai extends ChannelInstance {
 		await instance.finalize()
 	}
 
-	public async onCommand(msg: discordjs.Message, name: string, rawArgs: string[]): Promise<void> {
-		if (name !== this.feature.cmdname) {
-			return
-		}
-
+	async onCommand(msg: discordjs.Message, rawArgs: string[]): Promise<void> {
 		let args, options
 		try {
 			;({ args, options } = utils.parseCommandArgs(rawArgs, ['life', 'l']))
@@ -57,7 +57,7 @@ export class Mondai extends ChannelInstance {
 
 		if (this.game !== undefined) {
 			if (args.length === 1 && args[0] === 'stop') {
-				await this._finalizeGame()
+				await this.finalizeGame()
 				return
 			}
 
@@ -110,37 +110,57 @@ export class Mondai extends ChannelInstance {
 			}
 
 			if (!res) {
-				await this._finalizeGame()
+				await this.finalizeGame()
 			}
 		}
 	}
 }
 
-export class FeatureMondai extends Feature {
-	private config: MondaiConfig | undefined
+class FeatureMondaiCommand implements Command {
+	constructor(private readonly feature: FeatureMondai, private readonly cmdname: string) {}
 
-	constructor(public cmdname: string, private configPath: string) {
+	name(): string {
+		return this.cmdname
+	}
+
+	description(): string {
+		return 'mondai'
+	}
+
+	async command(msg: discordjs.Message, args: string[]): Promise<void> {
+		await this.feature.storageDriver
+			.channel(msg)
+			.get<Mondai>('mondai')
+			.onCommand(msg, args)
+	}
+}
+
+export class FeatureMondai extends CommonFeatureBase {
+	private config!: MondaiConfig
+
+	constructor(public readonly cmdname: string, private readonly configPath: string) {
 		super()
 	}
 
-	async initImpl(): Promise<void> {
-		this.registerChannel(this)
-		this.registerCommand(this)
+	protected async initImpl(): Promise<void> {
+		this.storageDriver.setChannelStorageConstructor(
+			ch =>
+				new StorageType(
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					new Map<string, any>([['mondai', new Mondai(this, ch, this.config)]])
+				)
+		)
+		this.featureCommand.registerCommand(new FeatureMondaiCommand(this, this.cmdname))
 
 		const toml = await fs.readFile(this.configPath, 'utf-8')
 		const parsed = await TOML.parse.async(toml)
 		this.config = parsed as MondaiConfig
 	}
 
-	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
-		await this.dispatchToChannels(msg.channel, x => (x as Mondai).onCommand(msg, name, args))
-	}
-
-	createChannelInstance(channel: utils.LikeTextChannel): ChannelInstance {
-		if (this.config === undefined) {
-			throw 'なんかおかしい'
-		}
-
-		return new Mondai(this, channel, this.config)
+	async onMessageImpl(msg: discordjs.Message): Promise<void> {
+		await this.storageDriver
+			.channel(msg)
+			.get<Mondai>('mondai')
+			.onMessage(msg)
 	}
 }

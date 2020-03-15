@@ -1,4 +1,4 @@
-import * as lodash from 'lodash'
+import lodash from 'lodash'
 import * as discordjs from 'discord.js'
 
 export function unreachable(): never {
@@ -181,19 +181,16 @@ export async function subCommandProxy(
 	}
 }
 
-export function replaceEmoji(
-	text: string,
-	emojis: discordjs.Collection<discordjs.Snowflake, discordjs.Emoji>
-): string {
+export function replaceEmoji(text: string, emojis: discordjs.GuildEmojiManager): string {
 	return text.replace(/:(\w+):/g, (match, emojiName) => {
-		const foundEmoji = emojis.find(x => x.name === emojiName)
+		const foundEmoji = emojis.cache.find(x => x.name === emojiName)
 		return foundEmoji ? foundEmoji.toString() : match
 	})
 }
 
 export function isValidUrl(url: string): boolean {
 	const validUrlRegExp = /^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([-.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$/
-	return validUrlRegExp.exec(url) ? true : false
+	return validUrlRegExp.test(url)
 }
 
 export async function forEachAsyncOf<T>(
@@ -220,4 +217,4 @@ export async function forEachAsyncOf<T>(
 	}
 }
 
-export type LikeTextChannel = discordjs.TextChannel | discordjs.GroupDMChannel | discordjs.DMChannel
+export type LikeTextChannel = discordjs.TextChannel | discordjs.DMChannel

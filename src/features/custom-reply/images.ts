@@ -1,13 +1,14 @@
-import axios from 'axios'
 import { promises as fs } from 'fs'
-import * as utils from '../../utils'
+import axios from 'axios'
 import * as discordjs from 'discord.js'
-import GlobalConfig from '../../global-config'
-import { CustomReply } from '.'
+
+import GlobalConfig from 'Src/global-config'
+import * as utils from 'Src/utils'
+import { CustomReply } from 'src/features/custom-reply'
 
 export function isValidImageId(id: string): boolean {
 	const validImageIdRegExp = /^[a-zA-Z0-9-_]{2,32}\.(png|jpg|jpeg|gif)$/
-	return validImageIdRegExp.exec(id) ? true : false
+	return validImageIdRegExp.test(id)
 }
 
 export class Images {
@@ -15,7 +16,7 @@ export class Images {
 	private state = 'free'
 	private imageName: string | undefined
 
-	constructor(private channelInstance: CustomReply, private gc: GlobalConfig) {}
+	constructor(private readonly channelInstance: CustomReply, private readonly gc: GlobalConfig) {}
 
 	async init(): Promise<void> {
 		this._images = await fs.readdir(
@@ -66,7 +67,7 @@ export class Images {
 
 		const search = utils.getOption(options, ['s', 'search'])
 		const images = search
-			? this._images.filter(x => new RegExp(search as string).exec(x))
+			? this._images.filter(x => new RegExp(search as string).test(x))
 			: this._images
 
 		if (images.length === 0) {
@@ -143,7 +144,7 @@ export class Images {
 			'customReply.images.sendPreview',
 			{},
 			{
-				files: [new discordjs.Attachment(this.getImagePathById(args[0]))],
+				files: [this.getImagePathById(args[0])],
 			}
 		)
 	}
@@ -169,23 +170,22 @@ export class Images {
 
 	async processImageUpload(msg: discordjs.Message): Promise<void> {
 		if (this.state === 'waitingImage') {
-			if (msg.attachments.size !== 1) {
+			const firstAttachment = msg.attachments.first()
+			if (firstAttachment === undefined) {
 				return
 			}
 
 			const res = await axios({
 				method: 'get',
-				url: msg.attachments.first().url,
+				url: firstAttachment.url,
 				responseType: 'arraybuffer',
 			})
 
-			if (this.imageName === undefined) {
-				throw 'なんかおかしい'
-			}
+			const imageName = this.imageName ?? utils.unreachable()
 
-			await fs.writeFile(this.getImagePathById(this.imageName), Buffer.from(res.data))
-			if (!this._images.includes(this.imageName)) {
-				this._images.push(this.imageName)
+			await fs.writeFile(this.getImagePathById(imageName), Buffer.from(res.data))
+			if (!this._images.includes(imageName)) {
+				this._images.push(imageName)
 				this._images.sort()
 			}
 			await this.gc.send(msg, 'customReply.images.uploadingComplete')

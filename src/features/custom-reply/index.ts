@@ -1,9 +1,14 @@
-import * as discordjs from 'discord.js'
-import * as utils from '../../utils'
 import { promises as fs } from 'fs'
-import { Images, isValidImageId } from './images'
-import Config from './config'
-import { Feature, ChannelInstance } from '../feature'
+import * as discordjs from 'discord.js'
+
+import CommonFeatureBase from 'Src/features/common-feature-base'
+import { Command } from 'Src/features/command'
+import { StorageType } from 'Src/features/storage'
+import GlobalConfig from 'Src/global-config'
+
+import * as utils from 'Src/utils'
+import { Images, isValidImageId } from 'Src/features/custom-reply/images'
+import Config from 'Src/features/custom-reply/config'
 
 type Response = {
 	action: string
@@ -13,13 +18,14 @@ type Response = {
 	reply?: boolean
 }
 
-export class CustomReply extends ChannelInstance {
+export class CustomReply {
 	private initialized = false
-	private images: Images
-	private config: Config
+	private readonly images: Images
+	private readonly config: Config
+	private gc: GlobalConfig
 
-	constructor(private feature: FeatureCustomReply, public channel: discordjs.Channel) {
-		super(feature)
+	constructor(readonly feature: FeatureCustomReply, public readonly channel: discordjs.Channel) {
+		this.gc = feature.manager.gc
 		this.images = new Images(this, this.gc)
 		this.config = new Config(this, this.gc)
 	}
@@ -30,7 +36,7 @@ export class CustomReply extends ChannelInstance {
 		this.initialized = true
 	}
 
-	async _processPickedResponse(msg: discordjs.Message, response: Response): Promise<void> {
+	private async processPickedResponse(msg: discordjs.Message, response: Response): Promise<void> {
 		if (response.action === 'do-nothing') {
 			return
 		}
@@ -41,16 +47,14 @@ export class CustomReply extends ChannelInstance {
 		if (response.action === 'gacha') {
 			let list = this.images.images
 			if (response.pattern) {
-				list = list.filter(x => new RegExp(response.pattern).exec(x))
+				list = list.filter(x => new RegExp(response.pattern).test(x))
 			}
 
 			if (list.length === 0) {
 				await this.gc.send(msg, 'customReply.gachaImageNotFound')
 				return
 			}
-			options.files = [
-				new discordjs.Attachment(this.images.getImagePathById(utils.randomPick(list))),
-			]
+			options.files = [this.images.getImagePathById(utils.randomPick(list))]
 		} else {
 			const imageId = response.image
 			if (imageId) {
@@ -66,12 +70,13 @@ export class CustomReply extends ChannelInstance {
 					await this.gc.send(msg, 'customReply.imageIdThatDoesNotExist', { imageId })
 					return
 				}
-				const attachment = new discordjs.Attachment(path)
-				options.files = [attachment]
+				options.files = [path]
 			}
 		}
 
-		text = utils.replaceEmoji(text, msg.guild.emojis)
+		if (msg.guild) {
+			text = utils.replaceEmoji(text, msg.guild.emojis)
+		}
 		if (response.reply !== undefined && !response.reply) {
 			msg.channel.send(text, options)
 		} else {
@@ -82,19 +87,15 @@ export class CustomReply extends ChannelInstance {
 	async _processCustomResponse(msg: discordjs.Message): Promise<void> {
 		for (const [, v] of this.config.config) {
 			for (const content of v.contents) {
-				if (new RegExp(content.target).exec(msg.content)) {
+				if (new RegExp(content.target).test(msg.content)) {
 					const response = utils.randomPick(content.responses)
-					await this._processPickedResponse(msg, response)
+					await this.processPickedResponse(msg, response)
 				}
 			}
 		}
 	}
 
-	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
-		if (name !== this.feature.cmdname) {
-			return
-		}
-
+	async onCommand(msg: discordjs.Message, args: string[]): Promise<void> {
 		await utils.subCommandProxy(
 			{
 				config: (a, m) => this.config.command(a, m),
@@ -120,26 +121,47 @@ export class CustomReply extends ChannelInstance {
 	}
 }
 
-export class FeatureCustomReply extends Feature {
-	constructor(public cmdname: string) {
+class CustomReplyCommand implements Command {
+	constructor(private readonly feature: FeatureCustomReply, private readonly cmdname: string) {}
+
+	name(): string {
+		return this.cmdname
+	}
+
+	description(): string {
+		return 'custom-reply'
+	}
+
+	async command(msg: discordjs.Message, args: string[]): Promise<void> {
+		await this.feature.storageDriver
+			.channel(msg)
+			.get<CustomReply>('customReply')
+			.onCommand(msg, args)
+	}
+}
+
+export class FeatureCustomReply extends CommonFeatureBase {
+	constructor(private readonly cmdname: string) {
 		super()
 	}
 
 	async initImpl(): Promise<void> {
-		this.registerChannel(this)
-		this.registerCommand(this)
+		this.storageDriver.setChannelStorageConstructor(ch => {
+			const client = new CustomReply(this, ch)
+			client.init()
+			return new StorageType(
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				new Map<string, any>([['customReply', client]])
+			)
+		})
+		this.featureCommand.registerCommand(new CustomReplyCommand(this, this.cmdname))
 		return Promise.resolve()
 	}
 
-	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
-		await this.dispatchToChannels(msg.channel, x =>
-			(x as CustomReply).onCommand(msg, name, args)
-		)
-	}
-
-	createChannelInstance(channel: discordjs.Channel): ChannelInstance {
-		const client = new CustomReply(this, channel)
-		client.init()
-		return client
+	async onMessageImpl(msg: discordjs.Message): Promise<void> {
+		await this.storageDriver
+			.channel(msg)
+			.get<CustomReply>('customReply')
+			.onMessage(msg)
 	}
 }

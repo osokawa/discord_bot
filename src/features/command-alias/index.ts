@@ -1,19 +1,43 @@
-import { Feature } from '../feature'
 import * as discordjs from 'discord.js'
 
-export default class extends Feature {
-	constructor(private from: string, private toName: string, private toArgs: string[]) {
+import CommonFeatureBase from 'Src/features/common-feature-base'
+import { FeatureCommand, Command } from 'Src/features/command'
+
+class CommandAliasCommand implements Command {
+	constructor(
+		private readonly featureCommand: FeatureCommand,
+		private readonly from: string,
+		private readonly toName: string,
+		private readonly toArgs: string[]
+	) {}
+
+	name(): string {
+		return this.from
+	}
+
+	description(): string {
+		return `${this.toName} ${this.toArgs.join(' ')} へのエイリアス`
+	}
+
+	async command(msg: discordjs.Message, args: string[]): Promise<void> {
+		await this.featureCommand.command(msg, this.toName, [...this.toArgs, ...args])
+	}
+}
+
+export default class extends CommonFeatureBase {
+	constructor(
+		private readonly from: string,
+		private readonly toName: string,
+		private readonly toArgs: string[]
+	) {
 		super()
 	}
 
-	async initImpl(): Promise<void> {
-		this.registerCommand(this)
-		return Promise.resolve()
-	}
+	protected initImpl(): Promise<void> {
+		this.featureCommand.registerCommand(
+			new CommandAliasCommand(this.featureCommand, this.from, this.toName, this.toArgs)
+		)
 
-	async onCommand(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
-		if (name === this.from) {
-			await this.manager.command(msg, this.toName, [...this.toArgs, ...args])
-		}
+		return Promise.resolve()
 	}
 }

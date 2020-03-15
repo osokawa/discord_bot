@@ -1,31 +1,35 @@
 import { promises as fs } from 'fs'
-import * as utils from './utils'
 import TOML from '@iarna/toml'
-import * as lodash from 'lodash'
+import lodash from 'lodash'
 import * as discordjs from 'discord.js'
+
+import * as utils from 'Src/utils'
 
 type Message = string | (string | { text: string; weight?: number })[]
 
 type Messages = {
-	[_: string]: Message | Messages
+	readonly [_: string]: Message | Messages
 }
 
 type Config = {
-	message: { [_: string]: Messages }
+	readonly message: { [_: string]: Messages }
 }
 
 export default class {
 	private config: Config | undefined
-	private templateCache: Map<string, lodash.TemplateExecutor> = new Map()
+	private readonly templateCache: Map<string, lodash.TemplateExecutor> = new Map()
 
 	constructor(private paths: string[]) {}
 
 	async init(): Promise<void> {
+		let config = {}
 		for (const path of this.paths) {
 			const toml = await fs.readFile(path, 'utf-8')
 			const parsed = await TOML.parse.async(toml)
-			this.config = lodash.merge(this.config, parsed)
+			config = lodash.merge(config, parsed)
 		}
+
+		this.config = config as Config
 	}
 
 	async send(
@@ -52,6 +56,11 @@ export default class {
 				templateText = value
 			} else if (value instanceof Array) {
 				const picked = utils.randomPick(value)
+
+				if (typeof picked === 'string') {
+					templateText = picked
+				}
+
 				if (picked instanceof Object) {
 					templateText = picked.text
 				}
@@ -61,10 +70,7 @@ export default class {
 		if (!this.templateCache.has(templateText)) {
 			this.templateCache.set(templateText, lodash.template(templateText))
 		}
-		const compiledTemplate = this.templateCache.get(templateText)
-		if (compiledTemplate === undefined) {
-			utils.unreachable()
-		}
+		const compiledTemplate = this.templateCache.get(templateText) ?? utils.unreachable()
 		let text = compiledTemplate(args)
 		if ('guild' in channel) {
 			text = utils.replaceEmoji(text, channel.guild.emojis)

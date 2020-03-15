@@ -1,8 +1,10 @@
-const { calcDivisionNumber } = require('./image-map.js')
+import { calcDivisionNumber } from 'Src/features/mondai/image-map'
 
 describe('calcDivisionNumber', () => {
 	test('1未満の引数を受け入れないこと', () => {
-		expect(() => { calcDivisionNumber(0) }).toThrow()
+		expect(() => {
+			calcDivisionNumber(0)
+		}).toThrow()
 	})
 
 	test('3枚の時の分割数が2*2になること', () => {
