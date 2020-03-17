@@ -12,15 +12,18 @@ import GlobalConfig from 'Src/global-config'
 
 import * as utils from 'Src/utils'
 
-type Music = {
-	readonly title: string
-	readonly path: string
-}
-type Playlist = Music[]
-type Playlists = Map<string, Playlist>
+import { Music } from 'Src/features/play-music/music'
+import { Playlist } from 'Src/features/play-music/playlist'
+
+type MusicList = Music[]
+type MusicLists = Map<string, MusicList>
 
 class PlayMusicCommand implements Command {
-	constructor(private readonly cmdName: string, private readonly feature: FeaturePlayMusic) {}
+	private readonly gc: GlobalConfig
+
+	constructor(private readonly cmdName: string, private readonly feature: FeaturePlayMusic) {
+		this.gc = this.feature.manager.gc
+	}
 
 	name(): string {
 		return this.cmdName
@@ -33,33 +36,65 @@ class PlayMusicCommand implements Command {
 	async play(rawArgs: string[], msg: discordjs.Message): Promise<void> {
 		let args
 		try {
-			;({ args } = utils.parseCommandArgs(rawArgs, [], 1))
+			;({ args } = utils.parseCommandArgs(rawArgs, [], 0))
 		} catch (e) {
-			await this.feature.manager.gc.send(msg, 'playMusic.invalidCommand', { e })
+			await this.gc.send(msg, 'playMusic.invalidCommand', { e })
 			return
 		}
 
 		const member = msg.member
-		if (member) {
-			// Only try to join the sender's voice channel if they are in one themselves
-			if (member.voice.channel) {
-				this.feature.currentPlaylist = []
-				this.feature.currentPlayingTrack = 0
+		if (!member) {
+			return
+		}
 
-				for (const arg of args) {
-					const res = this.feature.allMusicsFuse.search(arg)[0] as Music | undefined
-					if (res) {
-						this.feature.currentPlaylist.push(res)
-						msg.reply(`${res.title} を再生するロボ!`)
-					} else {
-						msg.reply('そんな曲は無いロボ')
-					}
-				}
+		if (!member.voice.channel) {
+			msg.reply('ボイスチャンネルに入ってから言うロボ')
+			return
+		}
 
-				await this.feature.makeConnection(member.voice.channel)
-				await this.feature.play()
+		if (args.length === 0) {
+			if (this.feature.playlist.isEmpty) {
+				msg.reply('今はプレイリストが空ロボ')
+				return
+			}
+
+			await this.feature.makeConnection(member.voice.channel)
+			await this.feature.play()
+			return
+		}
+
+		this.feature.playlist.clear()
+
+		for (const arg of args) {
+			const res = this.feature.allMusicsFuse.search(arg)[0] as Music | undefined
+			if (res) {
+				this.feature.playlist.addMusic(res)
+				msg.reply(`${res.title} を再生するロボ!`)
 			} else {
-				msg.reply('ボイスチャンネルに入ってから言うロボ')
+				msg.reply('そんな曲は無いロボ')
+			}
+		}
+
+		await this.feature.makeConnection(member.voice.channel)
+		await this.feature.play()
+	}
+
+	async add(rawArgs: string[], msg: discordjs.Message): Promise<void> {
+		let args
+		try {
+			;({ args } = utils.parseCommandArgs(rawArgs, [], 1))
+		} catch (e) {
+			await this.gc.send(msg, 'playMusic.invalidCommand', { e })
+			return
+		}
+
+		for (const arg of args) {
+			const res = this.feature.allMusicsFuse.search(arg)[0] as Music | undefined
+			if (res) {
+				this.feature.playlist.addMusic(res)
+				msg.reply(`${res.title} をプレイリストに追加するロボ!`)
+			} else {
+				msg.reply('そんな曲は無いロボ')
 			}
 		}
 	}
@@ -72,6 +107,7 @@ class PlayMusicCommand implements Command {
 		await utils.subCommandProxy(
 			{
 				play: (a, m) => this.play(a, m),
+				add: (a, m) => this.add(a, m),
 				stop: () => this.feature.closeConnection(),
 				reload: (a, m) => this.reload(a, m),
 			},
@@ -81,30 +117,30 @@ class PlayMusicCommand implements Command {
 	}
 }
 
-async function loadPlaylists(dir: string): Promise<Playlists> {
+async function loadPlaylists(dir: string): Promise<MusicLists> {
 	const files = await fs.readdir(dir)
-	const playlists: Playlists = new Map()
+	const musicLists: MusicLists = new Map()
 
 	for (const file of files) {
 		const toml = await fs.readFile(path.join(dir, file), 'utf-8')
 		const parsed = await TOML.parse.async(toml)
-		playlists.set(parsed.name as string, parsed.musics as Playlist)
+		musicLists.set(parsed.name as string, parsed.musics as MusicList)
 	}
 
-	return playlists
+	return musicLists
 }
 
-function getAllMusics(playlists: Playlists): Music[] {
-	return lodash.flatten(Array.from(playlists.values()))
+function getAllMusics(musicLists: MusicLists): Music[] {
+	return lodash.flatten(Array.from(musicLists.values()))
 }
 
 export class FeaturePlayMusic extends CommonFeatureBase {
 	private connection: discordjs.VoiceConnection | undefined
 	private dispatcher: discordjs.StreamDispatcher | undefined
-	playlists: Playlists = new Map()
+	musicLists: MusicLists = new Map()
 	allMusicsFuse!: Fuse<Music, Fuse.FuseOptions<Music>>
 
-	currentPlaylist: Playlist | undefined
+	playlist: Playlist = new Playlist()
 	currentPlayingTrack: number | undefined
 
 	constructor(public readonly cmdname: string) {
@@ -121,8 +157,8 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 	}
 
 	async reload(): Promise<void> {
-		this.playlists = await loadPlaylists('./config/playlists')
-		this.allMusicsFuse = new Fuse(getAllMusics(this.playlists), { keys: ['title'] })
+		this.musicLists = await loadPlaylists('./config/playlists')
+		this.allMusicsFuse = new Fuse(getAllMusics(this.musicLists), { keys: ['title'] })
 	}
 
 	async play(): Promise<void> {
@@ -130,16 +166,13 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 			throw '接続中のコネクションがない'
 		}
 
-		if (this.currentPlaylist === undefined || this.currentPlayingTrack === undefined) {
-			throw 'だめ'
-		}
-
-		if (this.currentPlaylist.length <= this.currentPlayingTrack) {
+		const music = this.playlist.currentMusic
+		if (!music) {
 			throw 'だめ'
 		}
 
 		this.destroyDispather()
-		this.dispatcher = this.connection.play(this.currentPlaylist[this.currentPlayingTrack].path)
+		this.dispatcher = this.connection.play(music.path)
 		this.dispatcher.on('finish', () => {
 			console.log('on finish')
 			this.destroyDispather()
@@ -147,14 +180,11 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 				return
 			}
 
-			if (this.currentPlaylist === undefined || this.currentPlayingTrack === undefined) {
+			if (this.playlist.isEmpty) {
 				return
 			}
 
-			this.currentPlayingTrack += 1
-			if (this.currentPlaylist.length <= this.currentPlayingTrack) {
-				this.currentPlayingTrack = 0
-			}
+			this.playlist.next()
 			this.play()
 		})
 	}
