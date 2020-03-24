@@ -86,3 +86,27 @@ invalidPageId = '無効なページ番号ロボ。最大ページ数は<%= maxPa
 removingComplete = '画像を削除したロボ!'
 sendPreview = 'これがその画像ロボ!'
 localReloadingComplete = 'ローカルにある画像を再読込したロボ!'
+
+[message.playMusic]
+haveToJoinVoiceChannel = 'ボイスチャンネルに入ってから言うロボ'
+
+[message.playMusic.interactor]
+welcome = '''
+曲追加モードに入ったロボ
+操作方法は `help` で出るロボよ'''
+invalidCommand = '不明なコマンドロボ! ヘルプを表示するには `help` と、曲追加モードから抜けるには `quit` とタイプするロボ'
+help = '''
+`p [ページ番号]` 曲一覧を表示するロボ
+`a [番号1] [番号2...]` 指定した番号の曲をプレイリストに追加するロボ
+`help` このヘルプを表示するロボ
+`quit` 曲追加モードから抜けるロボ'''
+quit = '曲追加モードから抜けたロボよ'
+addedMusic = '''
+<% if (musics.length === 0) {
+%>曲は追加されなかったロボ。ちゃんと番号を確認することロボね<%
+} else {
+%>次の曲をプレイリストに追加したロボ:
+<% for (const m of musics) {
+%><%= m.metadata.title %>
+<% } %><% } %>
+'''
