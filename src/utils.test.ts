@@ -32,6 +32,11 @@ describe('parseShellLikeCommand', () => {
 		expect(res).toEqual(['a', 'b'])
 	})
 
+	test('複数の空白で区切っても空の引数が生まれないこと', () => {
+		const res = utils.parseShellLikeCommand('a  b')
+		expect(res).toEqual(['a', 'b'])
+	})
+
 	describe('ダブルクォート', () => {
 		test('普通の文字で動くこと', () => {
 			const res = utils.parseShellLikeCommand('"abc"')
@@ -56,6 +61,11 @@ describe('parseShellLikeCommand', () => {
 		test('バックスラッシュ記法が使えること', () => {
 			const res = utils.parseShellLikeCommand('"petit\'s"')
 			expect(res).toEqual(["petit's"])
+		})
+
+		test('空の引数を作れること', () => {
+			const res = utils.parseShellLikeCommand('a "" b')
+			expect(res).toEqual(['a', '', 'b'])
 		})
 	})
 

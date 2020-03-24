@@ -10,6 +10,7 @@ export function parseShellLikeCommand(string: string): string[] | undefined {
 
 	const res: string[] = []
 	let current = ''
+	let allowEmpty = false
 
 	for (const char of string) {
 		if (state === 'backslash') {
@@ -26,6 +27,7 @@ export function parseShellLikeCommand(string: string): string[] | undefined {
 		if (char === '"') {
 			if (state === 'normal') {
 				state = 'doublequote'
+				allowEmpty = true
 				continue
 			}
 			if (state === 'doublequote') {
@@ -37,6 +39,7 @@ export function parseShellLikeCommand(string: string): string[] | undefined {
 		if (char === "'") {
 			if (state === 'normal') {
 				state = 'singlequote'
+				allowEmpty = true
 				continue
 			}
 			if (state === 'singlequote') {
@@ -47,8 +50,11 @@ export function parseShellLikeCommand(string: string): string[] | undefined {
 
 		if (/\s/.test(char)) {
 			if (state === 'normal') {
-				res.push(current)
+				if (current !== '' || allowEmpty) {
+					res.push(current)
+				}
 				current = ''
+				allowEmpty = false
 				continue
 			}
 		}
@@ -65,17 +71,15 @@ export function parseShellLikeCommand(string: string): string[] | undefined {
 }
 
 export function parseCommand(string: string): { commandName: string; args: string[] } | undefined {
-	const found = /^!([a-zA-Z_-]+)(\s+?.+)?$/.exec(string)
-	if (!found) {
+	const res = parseShellLikeCommand(string)
+	if (res === undefined) {
 		return
 	}
 
-	const commandName = found[1].toLowerCase()
-
-	const left = found[2]
-	const args = left ? left.split(/\s+/).filter(x => x !== '') : []
-
-	return { commandName, args }
+	if (0 < res.length && /^!([a-zA-Z_-]+)$/.test(res[0])) {
+		const [name, ...args] = res
+		return { commandName: name.substring(1).toLowerCase(), args: args ?? [] }
+	}
 }
 
 export function parseCommandArgs(
