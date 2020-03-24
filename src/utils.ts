@@ -5,6 +5,65 @@ export function unreachable(): never {
 	throw Error('This must never happen!')
 }
 
+export function parseShellLikeCommand(string: string): string[] | undefined {
+	let state: 'normal' | 'singlequote' | 'doublequote' | 'backslash' = 'normal'
+
+	const res: string[] = []
+	let current = ''
+
+	for (const char of string) {
+		if (state === 'backslash') {
+			current += char
+			state = 'doublequote'
+			continue
+		}
+
+		if (state === 'doublequote' && char === '\\') {
+			state = 'backslash'
+			continue
+		}
+
+		if (char === '"') {
+			if (state === 'normal') {
+				state = 'doublequote'
+				continue
+			}
+			if (state === 'doublequote') {
+				state = 'normal'
+				continue
+			}
+		}
+
+		if (char === "'") {
+			if (state === 'normal') {
+				state = 'singlequote'
+				continue
+			}
+			if (state === 'singlequote') {
+				state = 'normal'
+				continue
+			}
+		}
+
+		if (/\s/.test(char)) {
+			if (state === 'normal') {
+				res.push(current)
+				current = ''
+				continue
+			}
+		}
+
+		current += char
+	}
+
+	if (state !== 'normal') {
+		return
+	}
+
+	res.push(current)
+	return res
+}
+
 export function parseCommand(string: string): { commandName: string; args: string[] } | undefined {
 	const found = /^!([a-zA-Z_-]+)(\s+?.+)?$/.exec(string)
 	if (!found) {

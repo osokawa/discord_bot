@@ -1,5 +1,92 @@
 import * as utils from 'Src/utils'
 
+describe('parseShellLikeCommand', () => {
+	test('一般例A', () => {
+		const res = utils.parseShellLikeCommand(
+			'command --longoption=value --longoption value -o arg "double quote" \'single quote\''
+		)
+		expect(res).toEqual([
+			'command',
+			'--longoption=value',
+			'--longoption',
+			'value',
+			'-o',
+			'arg',
+			'double quote',
+			'single quote',
+		])
+	})
+
+	test('一般例B', () => {
+		const res = utils.parseShellLikeCommand("!music play 'title with space'")
+		expect(res).toEqual(['!music', 'play', 'title with space'])
+	})
+
+	test('一般例C', () => {
+		const res = utils.parseShellLikeCommand('!music play "title with \'"')
+		expect(res).toEqual(['!music', 'play', "title with '"])
+	})
+
+	test('分割点の前後にスペースがつかないこと', () => {
+		const res = utils.parseShellLikeCommand('a b')
+		expect(res).toEqual(['a', 'b'])
+	})
+
+	describe('ダブルクォート', () => {
+		test('普通の文字で動くこと', () => {
+			const res = utils.parseShellLikeCommand('"abc"')
+			expect(res).toEqual(['abc'])
+		})
+
+		test('終了しない時エラーになること', () => {
+			const res = utils.parseShellLikeCommand('"abc')
+			expect(res).toBeUndefined()
+		})
+
+		test('スペースで引数が区切られないこと', () => {
+			const res = utils.parseShellLikeCommand('"a b  c"')
+			expect(res).toEqual(['a b  c'])
+		})
+
+		test('終了後引数が区切られないこと', () => {
+			const res = utils.parseShellLikeCommand('"ab"c')
+			expect(res).toEqual(['abc'])
+		})
+
+		test('バックスラッシュ記法が使えること', () => {
+			const res = utils.parseShellLikeCommand('"petit\'s"')
+			expect(res).toEqual(["petit's"])
+		})
+	})
+
+	describe('シングルクォート', () => {
+		test('普通の文字で動くこと', () => {
+			const res = utils.parseShellLikeCommand("'abc'")
+			expect(res).toEqual(['abc'])
+		})
+
+		test('終了しない時エラーになること', () => {
+			const res = utils.parseShellLikeCommand("'abc")
+			expect(res).toBeUndefined()
+		})
+
+		test('スペースで引数が区切られないこと', () => {
+			const res = utils.parseShellLikeCommand("'a b  c'")
+			expect(res).toEqual(['a b  c'])
+		})
+
+		test('終了後引数が区切られないこと', () => {
+			const res = utils.parseShellLikeCommand("'ab'c")
+			expect(res).toEqual(['abc'])
+		})
+
+		test('バックスラッシュ記法が無視されること', () => {
+			const res = utils.parseShellLikeCommand("'a\\b'")
+			expect(res).toEqual(['a\\b'])
+		})
+	})
+})
+
 describe('parseCommand', () => {
 	describe('コマンド名', () => {
 		test('小文字のみを含むコマンド名を認識すること', () => {
