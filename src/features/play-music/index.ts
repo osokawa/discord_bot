@@ -14,13 +14,25 @@ import * as utils from 'Src/utils'
 
 import { Music } from 'Src/features/play-music/music'
 import { Playlist } from 'Src/features/play-music/playlist'
+import { MusicDatabase } from 'Src/features/play-music/music-database'
 
 type MusicList = Music[]
 type MusicLists = Map<string, MusicList>
 
+interface SearchResultCommon<Name extends string, T> {
+	type: Name
+	value: T[]
+}
+
+type SearchResultType =
+	| { type: 'musics'; value: Music[] }
+	| { type: 'artists'; value: string[] }
+	| { type: 'albums'; value: string[] }
+	| undefined
+
 class AddInteractor {
 	private gc: GlobalConfig
-	private musics: Music[] = []
+	private searchResult: SearchResultType
 
 	constructor(
 		private channel: utils.LikeTextChannel,
@@ -36,12 +48,20 @@ class AddInteractor {
 	}
 
 	async search(keyword: string): Promise<void> {
-		this.musics = this.feature.allMusicsFuse.search(keyword) as Music[]
+		this.searchResult = { type: 'musics', value: this.feature.database.search(keyword) }
+		await this.show(1)
+	}
+
+	async searchArtist(keyword: string): Promise<void> {
+		this.searchResult = {
+			type: 'artists',
+			value: this.feature.database.searchArtistName(keyword),
+		}
 		await this.show(1)
 	}
 
 	async fromPlaylist(name: string): Promise<void> {
-		const musicList = this.feature.musicLists.get(name)
+		const musicList = this.feature.database.fromMusicList(name)
 		if (musicList === undefined) {
 			await this.gc.sendToChannel(
 				this.channel,
@@ -50,20 +70,50 @@ class AddInteractor {
 			return
 		}
 
-		this.musics = musicList
-		await this.gc.sendToChannel(this.channel, 'プレイリストの曲を追加したロボ')
+		this.searchResult = { type: 'musics', value: musicList }
+		await this.gc.sendToChannel(this.channel, 'プレイリストの曲を検索結果に追加したロボ')
+	}
+
+	async fromArtist(name: string): Promise<void> {
+		const musics = this.feature.database.fromArtist(name)
+		if (musics === undefined) {
+			await this.gc.sendToChannel(
+				this.channel,
+				'そんなアーティストは存在しないロボ! 完全一致だから気をつけるロボよ'
+			)
+			return
+		}
+
+		this.searchResult = { type: 'musics', value: musics }
+		await this.gc.sendToChannel(this.channel, 'アーティストの曲を検索結果に追加したロボ')
+	}
+
+	async fromAlbum(name: string): Promise<void> {
+		const musics = this.feature.database.fromAlbum(name)
+		if (musics === undefined) {
+			await this.gc.sendToChannel(
+				this.channel,
+				'そんなアルバムは存在しないロボ! 完全一致だから気をつけるロボよ'
+			)
+			return
+		}
+
+		this.searchResult = { type: 'musics', value: musics }
+		await this.gc.sendToChannel(this.channel, 'アルバムの曲を検索結果に追加したロボ')
 	}
 
 	async show(pageNumber: number): Promise<void> {
 		// TODO: DRY
-		if (this.musics.length === 0) {
+		if (this.searchResult === undefined || this.searchResult.value.length === 0) {
 			await this.gc.sendToChannel(this.channel, 'customReply.images.listImageNotFound')
 			return
 		}
 
+		const value = this.searchResult.value
+
 		// 1ページあたり何枚の画像を表示させるか
 		const imagesPerPage = 20
-		const maxPage = Math.ceil(this.musics.length / imagesPerPage)
+		const maxPage = Math.ceil(value.length / imagesPerPage)
 
 		if (pageNumber < 1 || maxPage < pageNumber) {
 			await this.gc.sendToChannel(this.channel, 'customReply.images.invalidPageId', {
@@ -72,30 +122,46 @@ class AddInteractor {
 			return
 		}
 
-		const pagedImages = this.musics.slice(
+		const pagedImages = value.slice(
 			imagesPerPage * (pageNumber - 1),
 			imagesPerPage * pageNumber
 		)
 
-		await this.gc.sendToChannel(this.channel, 'customReply.images.list', {
-			currentPage: pageNumber,
-			maxPage,
-			images: pagedImages
+		let text = ''
+
+		if (this.searchResult.type === 'musics') {
+			text = (pagedImages as Music[])
 				.map(
 					(v, i) =>
 						`${i + imagesPerPage * (pageNumber - 1)}: ${v.metadata.title} (from ${
 							v.memberMusicList
 						})`
 				)
-				.join('\n'),
+				.join('\n')
+		}
+
+		if (this.searchResult.type === 'albums' || this.searchResult.type === 'artists') {
+			text = (pagedImages as string[])
+				.map((v, i) => `${i + imagesPerPage * (pageNumber - 1)}: ${v}`)
+				.join('\n')
+		}
+
+		await this.gc.sendToChannel(this.channel, 'customReply.images.list', {
+			currentPage: pageNumber,
+			maxPage,
+			images: text,
 		})
 
 		return
 	}
 
 	private addToPlaylistByIndex(indexes: number[]): Music[] | 'all' {
+		if (this.searchResult === undefined || this.searchResult.type !== 'musics') {
+			return []
+		}
+
 		if (indexes.length === 0) {
-			for (const music of this.musics) {
+			for (const music of this.searchResult.value) {
 				this.playlist.addMusic(music)
 			}
 
@@ -104,8 +170,8 @@ class AddInteractor {
 
 		const addedMusics: Music[] = []
 		for (const i of indexes) {
-			if (!isNaN(i) && 0 <= i && i <= this.musics.length) {
-				const music = this.musics[i]
+			if (!isNaN(i) && 0 <= i && i <= this.searchResult.value.length) {
+				const music = this.searchResult.value[i]
 				addedMusics.push(music)
 				this.playlist.addMusic(music)
 			}
@@ -140,6 +206,17 @@ class AddInteractor {
 			return
 		}
 
+		if (commandName === 'searchArtist') {
+			if (args.length < 1) {
+				await this.gc.send(msg, '検索キーワードを指定するロボ')
+				return
+			}
+
+			console.log(args)
+			await this.searchArtist(args[0])
+			return
+		}
+
 		if (commandName === 'playlist') {
 			if (args.length < 1) {
 				await this.gc.send(msg, 'プレイリスト名を指定するロボ')
@@ -147,6 +224,26 @@ class AddInteractor {
 			}
 
 			await this.fromPlaylist(args[0])
+			return
+		}
+
+		if (commandName === 'artist') {
+			if (args.length < 1) {
+				await this.gc.send(msg, 'アーティスト名を指定するロボ')
+				return
+			}
+
+			await this.fromArtist(args[0])
+			return
+		}
+
+		if (commandName === 'album') {
+			if (args.length < 1) {
+				await this.gc.send(msg, 'アルバム名を指定するロボ')
+				return
+			}
+
+			await this.fromAlbum(args[0])
 			return
 		}
 
@@ -249,7 +346,7 @@ class PlayMusicCommand implements Command {
 		this.feature.playlist.clear()
 
 		for (const arg of args) {
-			const res = this.feature.allMusicsFuse.search(arg) as Music[]
+			const res = this.feature.database.search(arg)
 			if (0 < res.length) {
 				const music = res[0]
 				this.feature.playlist.addMusic(music)
@@ -300,7 +397,7 @@ class PlayMusicCommand implements Command {
 		}
 
 		for (const arg of args) {
-			const res = this.feature.allMusicsFuse.search(arg)[0] as Music | undefined
+			const res = this.feature.database.search(arg)[0]
 			if (res) {
 				this.feature.playlist.addMusic(res)
 				msg.reply(`${res.title} をプレイリストに追加するロボ!`)
@@ -356,8 +453,7 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 	interactors: Set<AddInteractor> = new Set()
 	private connection: discordjs.VoiceConnection | undefined
 	private dispatcher: discordjs.StreamDispatcher | undefined
-	musicLists: MusicLists = new Map()
-	allMusicsFuse!: Fuse<Music, Fuse.FuseOptions<Music>>
+	database!: MusicDatabase
 
 	playlist: Playlist = new Playlist()
 	currentPlayingTrack: number | undefined
@@ -387,14 +483,9 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 	}
 
 	async reload(): Promise<void> {
-		this.musicLists = await loadPlaylists('./config/playlists')
-		this.allMusicsFuse = new Fuse(getAllMusics(this.musicLists), {
-			keys: [
-				{ name: 'metadata.title', weight: 0.6 },
-				{ name: 'metadata.album', weight: 0.3 },
-				{ name: 'metadata.artist', weight: 0.1 },
-			],
-		})
+		const database = new MusicDatabase('./config/playlists')
+		await database.init()
+		this.database = database
 	}
 
 	async play(): Promise<void> {
