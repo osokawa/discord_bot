@@ -20,103 +20,174 @@ type MusicLists = Map<string, MusicList>
 
 class AddInteractor {
 	private gc: GlobalConfig
+	private musics: Music[] = []
 
 	constructor(
 		private channel: utils.LikeTextChannel,
 		private feature: FeaturePlayMusic,
 		private playlist: Playlist,
-		private musics: Music[],
 		private done: () => void
 	) {
 		this.gc = this.feature.manager.gc
-	}
-
-	// TODO: DRY
-	parseCommand(string: string): { commandName: string; args: string[] } | undefined {
-		const found = /^([a-zA-Z_-]+)(\s+?.+)?$/.exec(string)
-		if (!found) {
-			return
-		}
-
-		const commandName = found[1].toLowerCase()
-
-		const left = found[2]
-		const args = left ? left.split(/\s+/).filter(x => x !== '') : []
-
-		return { commandName, args }
 	}
 
 	async welcome(): Promise<void> {
 		await this.gc.sendToChannel(this.channel, 'playMusic.interactor.welcome')
 	}
 
+	async search(keyword: string): Promise<void> {
+		this.musics = this.feature.allMusicsFuse.search(keyword) as Music[]
+		await this.show(1)
+	}
+
+	async fromPlaylist(name: string): Promise<void> {
+		const musicList = this.feature.musicLists.get(name)
+		if (musicList === undefined) {
+			await this.gc.sendToChannel(
+				this.channel,
+				'そんなプレイリストは存在しないロボ! 完全一致だから気をつけるロボよ'
+			)
+			return
+		}
+
+		this.musics = musicList
+		await this.gc.sendToChannel(this.channel, 'プレイリストの曲を追加したロボ')
+	}
+
+	async show(pageNumber: number): Promise<void> {
+		// TODO: DRY
+		if (this.musics.length === 0) {
+			await this.gc.sendToChannel(this.channel, 'customReply.images.listImageNotFound')
+			return
+		}
+
+		// 1ページあたり何枚の画像を表示させるか
+		const imagesPerPage = 20
+		const maxPage = Math.ceil(this.musics.length / imagesPerPage)
+
+		if (pageNumber < 1 || maxPage < pageNumber) {
+			await this.gc.sendToChannel(this.channel, 'customReply.images.invalidPageId', {
+				maxPage,
+			})
+			return
+		}
+
+		const pagedImages = this.musics.slice(
+			imagesPerPage * (pageNumber - 1),
+			imagesPerPage * pageNumber
+		)
+
+		await this.gc.sendToChannel(this.channel, 'customReply.images.list', {
+			currentPage: pageNumber,
+			maxPage,
+			images: pagedImages
+				.map(
+					(v, i) =>
+						`${i + imagesPerPage * (pageNumber - 1)}: ${v.metadata.title} (from ${
+							v.memberMusicList
+						})`
+				)
+				.join('\n'),
+		})
+
+		return
+	}
+
+	private addToPlaylistByIndex(indexes: number[]): Music[] | 'all' {
+		if (indexes.length === 0) {
+			for (const music of this.musics) {
+				this.playlist.addMusic(music)
+			}
+
+			return 'all'
+		}
+
+		const addedMusics: Music[] = []
+		for (const i of indexes) {
+			if (!isNaN(i) && 0 <= i && i <= this.musics.length) {
+				const music = this.musics[i]
+				addedMusics.push(music)
+				this.playlist.addMusic(music)
+			}
+		}
+
+		return addedMusics
+	}
+
 	async onMessage(msg: discordjs.Message): Promise<void> {
-		const res = this.parseCommand(msg.content)
-		if (res === undefined) {
+		const res = utils.parseShellLikeCommand(msg.content)
+		if (res === undefined || res.length < 1) {
 			await this.gc.send(msg, 'playMusic.interactor.invalidCommand')
 			return
 		}
 
-		const { commandName, args } = res
+		const commandName = res[0]
+		const args = res.splice(1)
 
 		if (commandName === 'help') {
 			await this.gc.send(msg, 'playMusic.interactor.help')
 			return
 		}
 
-		if (commandName === 'p') {
-			// TODO: DRY
-			if (this.musics.length === 0) {
-				await this.gc.send(msg, 'customReply.images.listImageNotFound')
+		if (commandName === 'search') {
+			if (args.length < 1) {
+				await this.gc.send(msg, '検索キーワードを指定するロボ')
 				return
 			}
 
-			const pageNumber = parseInt(args[0], 10) || 1
-
-			// 1ページあたり何枚の画像を表示させるか
-			const imagesPerPage = 20
-			const maxPage = Math.ceil(this.musics.length / imagesPerPage)
-
-			if (pageNumber < 1 || maxPage < pageNumber) {
-				await this.gc.send(msg, 'customReply.images.invalidPageId', {
-					maxPage,
-				})
-				return
-			}
-
-			const pagedImages = this.musics.slice(
-				imagesPerPage * (pageNumber - 1),
-				imagesPerPage * pageNumber
-			)
-
-			await this.gc.send(msg, 'customReply.images.list', {
-				currentPage: pageNumber,
-				maxPage,
-				images: pagedImages
-					.map(
-						(v, i) =>
-							`${i + imagesPerPage * (pageNumber - 1)}: ${v.metadata.title} (from ${
-								v.memberMusicList
-							})`
-					)
-					.join('\n'),
-			})
-
+			console.log(args)
+			await this.search(args[0])
 			return
 		}
 
-		if (commandName === 'a') {
-			const addedMusics: Music[] = []
-			for (const i of args) {
-				const parsed = parseInt(i, 10)
-				if (!isNaN(parsed) && 0 <= parsed && parsed <= this.musics.length) {
-					const music = this.musics[parsed]
-					addedMusics.push(music)
-					this.playlist.addMusic(music)
-				}
+		if (commandName === 'playlist') {
+			if (args.length < 1) {
+				await this.gc.send(msg, 'プレイリスト名を指定するロボ')
+				return
 			}
 
-			await this.gc.send(msg, 'playMusic.interactor.addedMusic', { musics: addedMusics })
+			await this.fromPlaylist(args[0])
+			return
+		}
+
+		if (commandName === 'show') {
+			await this.show(parseInt(args[0], 10) || 1)
+			return
+		}
+
+		if (commandName === 'add') {
+			const res = this.addToPlaylistByIndex(args.map(x => parseInt(x, 10)))
+			if (res === 'all') {
+				await this.gc.send(msg, '全ての曲を追加したロボ')
+			} else {
+				await this.gc.send(msg, 'playMusic.interactor.addedMusic', { musics: res })
+			}
+			return
+		}
+
+		if (commandName === 'play') {
+			const member = msg.member
+			if (!member) {
+				return
+			}
+
+			if (!member.voice.channel) {
+				msg.reply('ボイスチャンネルに入ってから言うロボ')
+				return
+			}
+
+			this.playlist.clear()
+
+			const res = this.addToPlaylistByIndex(args.map(x => parseInt(x, 10)))
+
+			await this.feature.makeConnection(member.voice.channel)
+			await this.feature.play()
+
+			if (res === 'all') {
+				await this.gc.send(msg, '全ての曲を追加したロボ')
+			} else {
+				await this.gc.send(msg, 'playMusic.interactor.addedMusic', { musics: res })
+			}
 			return
 		}
 
@@ -183,9 +254,6 @@ class PlayMusicCommand implements Command {
 				const music = res[0]
 				this.feature.playlist.addMusic(music)
 				msg.reply(`${music.metadata.title} を再生するロボ!`)
-
-				const i = this.feature.createInteractor(msg, res)
-				await i.welcome()
 			} else {
 				msg.reply('そんな曲は無いロボ')
 			}
@@ -193,6 +261,33 @@ class PlayMusicCommand implements Command {
 
 		await this.feature.makeConnection(member.voice.channel)
 		await this.feature.play()
+	}
+
+	async edit(rawArgs: string[], msg: discordjs.Message): Promise<void> {
+		let args
+		try {
+			;({ args } = utils.parseCommandArgs(rawArgs, [], 0))
+		} catch (e) {
+			await this.gc.send(msg, 'playMusic.invalidCommand', { e })
+			return
+		}
+
+		if (1 < args.length) {
+			await msg.reply('駄目なメッセージの引数の数')
+			return
+		}
+
+		if (this.feature.interactors.size !== 0) {
+			await msg.reply('今まさにインタラクションモード')
+			return
+		}
+
+		const i = this.feature.createInteractor(msg)
+		await i.welcome()
+		if (args.length === 1) {
+			await i.search(args[0])
+		}
+		return
 	}
 
 	async add(rawArgs: string[], msg: discordjs.Message): Promise<void> {
@@ -226,6 +321,7 @@ class PlayMusicCommand implements Command {
 				add: (a, m) => this.add(a, m),
 				stop: () => this.feature.closeConnection(),
 				reload: (a, m) => this.reload(a, m),
+				edit: (a, m) => this.edit(a, m),
 			},
 			args,
 			msg
@@ -257,7 +353,7 @@ function getAllMusics(musicLists: MusicLists): Music[] {
 }
 
 export class FeaturePlayMusic extends CommonFeatureBase {
-	private interactors: Set<AddInteractor> = new Set()
+	interactors: Set<AddInteractor> = new Set()
 	private connection: discordjs.VoiceConnection | undefined
 	private dispatcher: discordjs.StreamDispatcher | undefined
 	musicLists: MusicLists = new Map()
@@ -281,8 +377,8 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 		}
 	}
 
-	createInteractor(msg: discordjs.Message, musics: Music[]): AddInteractor {
-		const i = new AddInteractor(msg.channel, this, this.playlist, musics, () => {
+	createInteractor(msg: discordjs.Message): AddInteractor {
+		const i = new AddInteractor(msg.channel, this, this.playlist, () => {
 			this.interactors.delete(i)
 		})
 		this.interactors.add(i)
