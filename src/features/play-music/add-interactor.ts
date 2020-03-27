@@ -31,12 +31,16 @@ export class AddInteractor {
 		this.gc = this.feature.manager.gc
 	}
 
+	private setMusicResult(musics: Music[]): void {
+		this.searchResult = { type: 'musics', value: musics }
+	}
+
 	async welcome(): Promise<void> {
 		await this.gc.sendToChannel(this.channel, 'playMusic.interactor.welcome')
 	}
 
 	async search(keyword: string): Promise<void> {
-		this.searchResult = { type: 'musics', value: this.feature.database.search(keyword) }
+		this.setMusicResult(this.feature.database.search(keyword))
 		await this.show(1)
 	}
 
@@ -48,46 +52,42 @@ export class AddInteractor {
 		await this.show(1)
 	}
 
-	async fromPlaylist(name: string): Promise<void> {
-		const musicList = this.feature.database.fromMusicList(name)
-		if (musicList === undefined) {
-			await this.gc.sendToChannel(
-				this.channel,
-				'そんなプレイリストは存在しないロボ! 完全一致だから気をつけるロボよ'
-			)
-			return
+	async searchAlbum(keyword: string): Promise<void> {
+		this.searchResult = {
+			type: 'albums',
+			value: this.feature.database.searchAlbumName(keyword),
 		}
-
-		this.searchResult = { type: 'musics', value: musicList }
-		await this.gc.sendToChannel(this.channel, 'プレイリストの曲を検索結果に追加したロボ')
+		await this.show(1)
 	}
 
-	async fromArtist(name: string): Promise<void> {
-		const musics = this.feature.database.fromArtist(name)
-		if (musics === undefined) {
-			await this.gc.sendToChannel(
-				this.channel,
-				'そんなアーティストは存在しないロボ! 完全一致だから気をつけるロボよ'
-			)
+	async select(index: number): Promise<void> {
+		if (this.searchResult === undefined || this.searchResult.type === 'musics') {
+			await this.gc.sendToChannel(this.channel, 'だめ')
 			return
 		}
 
-		this.searchResult = { type: 'musics', value: musics }
-		await this.gc.sendToChannel(this.channel, 'アーティストの曲を検索結果に追加したロボ')
-	}
+		if (this.searchResult.type === 'artists') {
+			const artist: string | undefined = this.searchResult.value[index]
+			if (artist === undefined) {
+				await this.gc.sendToChannel(this.channel, 'だめ')
+				return
+			}
 
-	async fromAlbum(name: string): Promise<void> {
-		const musics = this.feature.database.fromAlbum(name)
-		if (musics === undefined) {
-			await this.gc.sendToChannel(
-				this.channel,
-				'そんなアルバムは存在しないロボ! 完全一致だから気をつけるロボよ'
-			)
+			const res = this.feature.database.fromArtist(artist) ?? utils.unreachable()
+			this.setMusicResult(res)
 			return
 		}
 
-		this.searchResult = { type: 'musics', value: musics }
-		await this.gc.sendToChannel(this.channel, 'アルバムの曲を検索結果に追加したロボ')
+		if (this.searchResult.type === 'albums') {
+			const album: string | undefined = this.searchResult.value[index]
+			if (album === undefined) {
+				await this.gc.sendToChannel(this.channel, 'だめ')
+				return
+			}
+
+			const res = this.feature.database.fromAlbum(album) ?? utils.unreachable()
+			this.setMusicResult(res)
+		}
 	}
 
 	async show(pageNumber: number): Promise<void> {
@@ -189,7 +189,6 @@ export class AddInteractor {
 				return
 			}
 
-			console.log(args)
 			await this.search(args[0])
 			return
 		}
@@ -200,43 +199,27 @@ export class AddInteractor {
 				return
 			}
 
-			console.log(args)
 			await this.searchArtist(args[0])
 			return
 		}
 
-		if (commandName === 'playlist') {
+		if (commandName === 'searchAlbum') {
 			if (args.length < 1) {
-				await this.gc.send(msg, 'プレイリスト名を指定するロボ')
+				await this.gc.send(msg, '検索キーワードを指定するロボ')
 				return
 			}
 
-			await this.fromPlaylist(args[0])
-			return
-		}
-
-		if (commandName === 'artist') {
-			if (args.length < 1) {
-				await this.gc.send(msg, 'アーティスト名を指定するロボ')
-				return
-			}
-
-			await this.fromArtist(args[0])
-			return
-		}
-
-		if (commandName === 'album') {
-			if (args.length < 1) {
-				await this.gc.send(msg, 'アルバム名を指定するロボ')
-				return
-			}
-
-			await this.fromAlbum(args[0])
+			await this.searchAlbum(args[0])
 			return
 		}
 
 		if (commandName === 'show') {
 			await this.show(parseInt(args[0], 10) || 1)
+			return
+		}
+
+		if (commandName === 'select') {
+			await this.select(parseInt(args[0], 10) || 0)
 			return
 		}
 
