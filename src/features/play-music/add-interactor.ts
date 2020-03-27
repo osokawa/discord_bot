@@ -8,6 +8,10 @@ import { FeaturePlayMusic } from 'Src/features/play-music'
 import { Music } from 'Src/features/play-music/music'
 import { Playlist } from 'Src/features/play-music/playlist'
 
+interface IListDisplayable {
+	toListString(): string
+}
+
 type SearchResultType =
 	| { kind: 'musics'; value: Music[] }
 	| { kind: 'artists'; value: string[] }
@@ -104,13 +108,13 @@ export class AddInteractor {
 		} else if (sr.kind === 'albums') {
 			base(sr.value, name => this.feature.database.fromAlbum(name) ?? utils.unreachable())
 		} else {
-			await this.gc.sendToChannel(this.channel, 'だめ')
+			await this.gc.sendToChannel(this.channel, 'playMusic.interactor.selectInvalidState')
 		}
 	}
 
 	async show(pageNumber: number): Promise<void> {
 		if (this.searchResult.kind === 'undefined') {
-			await this.gc.sendToChannel(this.channel, 'customReply.images.listImageNotFound')
+			await this.gc.sendToChannel(this.channel, 'playMusic.interactor.resultNotFound')
 			return
 		}
 
@@ -118,9 +122,9 @@ export class AddInteractor {
 		const res = utils.pagination(val, pageNumber)
 
 		if (res.kind === 'empty') {
-			await this.gc.sendToChannel(this.channel, 'customReply.images.listImageNotFound')
+			await this.gc.sendToChannel(this.channel, 'playMusic.interactor.resultNotFound')
 		} else if (res.kind === 'invalidPageId') {
-			await this.gc.sendToChannel(this.channel, 'customReply.images.invalidPageId', {
+			await this.gc.sendToChannel(this.channel, 'playMusic.interactor.invalidPageId', {
 				maxPage: res.maxPage,
 			})
 		} else if (res.kind === 'ok') {
@@ -144,13 +148,28 @@ export class AddInteractor {
 				utils.unreachable(this.searchResult)
 			}
 
-			await this.gc.sendToChannel(this.channel, 'customReply.images.list', {
+			await this.gc.sendToChannel(this.channel, 'playMusic.interactor.list', {
 				currentPage: pageNumber,
 				maxPage: res.maxPage,
-				images: text,
+				results: text,
 			})
 		} else {
 			utils.unreachable(res)
+		}
+	}
+
+	async add(indexes: string[]): Promise<void> {
+		const res = this.addToPlaylistByIndex(indexes)
+		if (res === 'all') {
+			await this.gc.sendToChannel(this.channel, 'playMusic.interactor.addedMusic', {
+				all: true,
+				musics: [],
+			})
+		} else {
+			await this.gc.sendToChannel(this.channel, 'playMusic.interactor.addedMusic', {
+				all: false,
+				musics: res,
+			})
 		}
 	}
 
@@ -233,12 +252,7 @@ export class AddInteractor {
 		}
 
 		if (commandName === 'add') {
-			const res = this.addToPlaylistByIndex(args)
-			if (res === 'all') {
-				await this.gc.send(msg, '全ての曲を追加したロボ')
-			} else {
-				await this.gc.send(msg, 'playMusic.interactor.addedMusic', { musics: res })
-			}
+			await this.add(args)
 			return
 		}
 
@@ -249,22 +263,16 @@ export class AddInteractor {
 			}
 
 			if (!member.voice.channel) {
-				msg.reply('ボイスチャンネルに入ってから言うロボ')
+				await this.gc.send(msg, 'playMusic.haveToJoinVoiceChannel')
 				return
 			}
 
 			this.playlist.clear()
 
-			const res = this.addToPlaylistByIndex(args)
+			await this.add(args)
 
 			await this.feature.makeConnection(member.voice.channel)
 			await this.feature.play()
-
-			if (res === 'all') {
-				await this.gc.send(msg, '全ての曲を追加したロボ')
-			} else {
-				await this.gc.send(msg, 'playMusic.interactor.addedMusic', { musics: res })
-			}
 			return
 		}
 

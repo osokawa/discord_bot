@@ -110,7 +110,9 @@ help = '''
 `a` `p` は番号を指定しないと検索結果の全ての曲が対象になるロボ'''
 quit = '曲追加モードから抜けたロボよ'
 addedMusic = '''
-<% if (musics.length === 0) {
+<% if (all) {
+%>全ての曲を追加したロボ!<%
+} else if (musics.length === 0) {
 %>曲は追加されなかったロボ。ちゃんと番号を確認することロボね<%
 } else {
 %>次の曲をプレイリストに追加したロボ:
@@ -118,3 +120,7 @@ addedMusic = '''
 %><%= m.metadata.title %>
 <% } %><% } %>
 '''
+selectInvalidState = '`select` はアーティスト/アルバムの検索結果がある時だけ使えるロボ'
+resultNotFound = '検索結果に表示するものが無いロボ'
+invalidPageId = '無効なページ番号ロボ。最大ページ数は<%= maxPage %>ロボよ'
+list = "検索結果ロボよー (<%= currentPage %>/<%= maxPage %>):\n<%= results %>"
