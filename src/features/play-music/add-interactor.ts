@@ -1,3 +1,4 @@
+import lodash from 'lodash'
 import * as discordjs from 'discord.js'
 
 import GlobalConfig from 'Src/global-config'
@@ -7,20 +8,47 @@ import { FeaturePlayMusic } from 'Src/features/play-music'
 import { Music } from 'Src/features/play-music/music'
 import { Playlist } from 'Src/features/play-music/playlist'
 
-interface SearchResultCommon<Name extends string, T> {
-	type: Name
-	value: T[]
-}
-
 type SearchResultType =
-	| { type: 'musics'; value: Music[] }
-	| { type: 'artists'; value: string[] }
-	| { type: 'albums'; value: string[] }
-	| undefined
+	| { kind: 'musics'; value: Music[] }
+	| { kind: 'artists'; value: string[] }
+	| { kind: 'albums'; value: string[] }
+	| { kind: 'undefined' }
+
+function parseIndexes(strings: string[], min: number, max: number): number[] {
+	let ret: number[] = []
+
+	for (const str of strings) {
+		const match = /(\d+)(?:-|\.\.)(\d+)/.exec(str)
+		if (match) {
+			const start = parseInt(match[1], 10)
+			const end = parseInt(match[2], 10)
+
+			if (!(start < end)) {
+				throw new Error('invalid expression')
+			}
+
+			ret = [...ret, ...lodash.range(start, end + 1)]
+			continue
+		}
+
+		const index = parseInt(str, 10)
+		if (isNaN(index)) {
+			throw new Error(`failed to parse ${str} as int`)
+		}
+
+		ret.push(index)
+	}
+
+	if (!ret.every(v => min <= v && v <= max)) {
+		throw new Error('out of range')
+	}
+
+	return ret
+}
 
 export class AddInteractor {
 	private gc: GlobalConfig
-	private searchResult: SearchResultType
+	private searchResult: SearchResultType = { kind: 'undefined' }
 
 	constructor(
 		private channel: utils.LikeTextChannel,
@@ -32,7 +60,7 @@ export class AddInteractor {
 	}
 
 	private setMusicResult(musics: Music[]): void {
-		this.searchResult = { type: 'musics', value: musics }
+		this.searchResult = { kind: 'musics', value: musics }
 	}
 
 	async welcome(): Promise<void> {
@@ -46,7 +74,7 @@ export class AddInteractor {
 
 	async searchArtist(keyword: string): Promise<void> {
 		this.searchResult = {
-			type: 'artists',
+			kind: 'artists',
 			value: this.feature.database.searchArtistName(keyword),
 		}
 		await this.show(1)
@@ -54,97 +82,80 @@ export class AddInteractor {
 
 	async searchAlbum(keyword: string): Promise<void> {
 		this.searchResult = {
-			type: 'albums',
+			kind: 'albums',
 			value: this.feature.database.searchAlbumName(keyword),
 		}
 		await this.show(1)
 	}
 
-	async select(index: number): Promise<void> {
-		if (this.searchResult === undefined || this.searchResult.type === 'musics') {
+	async select(indexes: string[]): Promise<void> {
+		const sr = this.searchResult
+
+		const base = (names: string[], func: (name: string) => Music[]): void => {
+			const res = lodash.flatten(
+				parseIndexes(indexes, 0, names.length).map(i => func(names[i]))
+			)
+			this.setMusicResult(res)
+			this.show(1)
+		}
+
+		if (sr.kind === 'artists') {
+			base(sr.value, name => this.feature.database.fromArtist(name) ?? utils.unreachable())
+		} else if (sr.kind === 'albums') {
+			base(sr.value, name => this.feature.database.fromAlbum(name) ?? utils.unreachable())
+		} else {
 			await this.gc.sendToChannel(this.channel, 'だめ')
-			return
-		}
-
-		if (this.searchResult.type === 'artists') {
-			const artist: string | undefined = this.searchResult.value[index]
-			if (artist === undefined) {
-				await this.gc.sendToChannel(this.channel, 'だめ')
-				return
-			}
-
-			const res = this.feature.database.fromArtist(artist) ?? utils.unreachable()
-			this.setMusicResult(res)
-			return
-		}
-
-		if (this.searchResult.type === 'albums') {
-			const album: string | undefined = this.searchResult.value[index]
-			if (album === undefined) {
-				await this.gc.sendToChannel(this.channel, 'だめ')
-				return
-			}
-
-			const res = this.feature.database.fromAlbum(album) ?? utils.unreachable()
-			this.setMusicResult(res)
 		}
 	}
 
 	async show(pageNumber: number): Promise<void> {
-		// TODO: DRY
-		if (this.searchResult === undefined || this.searchResult.value.length === 0) {
+		if (this.searchResult.kind === 'undefined') {
 			await this.gc.sendToChannel(this.channel, 'customReply.images.listImageNotFound')
 			return
 		}
 
-		const value = this.searchResult.value
+		const val: (Music | string)[] = this.searchResult.value
+		const res = utils.pagination(val, pageNumber)
 
-		// 1ページあたり何枚の画像を表示させるか
-		const imagesPerPage = 20
-		const maxPage = Math.ceil(value.length / imagesPerPage)
-
-		if (pageNumber < 1 || maxPage < pageNumber) {
+		if (res.kind === 'empty') {
+			await this.gc.sendToChannel(this.channel, 'customReply.images.listImageNotFound')
+		} else if (res.kind === 'invalidPageId') {
 			await this.gc.sendToChannel(this.channel, 'customReply.images.invalidPageId', {
-				maxPage,
+				maxPage: res.maxPage,
 			})
-			return
+		} else if (res.kind === 'ok') {
+			let text
+
+			if (this.searchResult.kind === 'musics') {
+				text = (res.value as Music[])
+					.map(
+						(v, i) =>
+							`${res.firstIndex + i}: ${v.metadata.title} (from ${v.memberMusicList})`
+					)
+					.join('\n')
+			} else if (
+				this.searchResult.kind === 'albums' ||
+				this.searchResult.kind === 'artists'
+			) {
+				text = (res.value as string[])
+					.map((v, i) => `${res.firstIndex + i}: ${v}`)
+					.join('\n')
+			} else {
+				utils.unreachable(this.searchResult)
+			}
+
+			await this.gc.sendToChannel(this.channel, 'customReply.images.list', {
+				currentPage: pageNumber,
+				maxPage: res.maxPage,
+				images: text,
+			})
+		} else {
+			utils.unreachable(res)
 		}
-
-		const pagedImages = value.slice(
-			imagesPerPage * (pageNumber - 1),
-			imagesPerPage * pageNumber
-		)
-
-		let text = ''
-
-		if (this.searchResult.type === 'musics') {
-			text = (pagedImages as Music[])
-				.map(
-					(v, i) =>
-						`${i + imagesPerPage * (pageNumber - 1)}: ${v.metadata.title} (from ${
-							v.memberMusicList
-						})`
-				)
-				.join('\n')
-		}
-
-		if (this.searchResult.type === 'albums' || this.searchResult.type === 'artists') {
-			text = (pagedImages as string[])
-				.map((v, i) => `${i + imagesPerPage * (pageNumber - 1)}: ${v}`)
-				.join('\n')
-		}
-
-		await this.gc.sendToChannel(this.channel, 'customReply.images.list', {
-			currentPage: pageNumber,
-			maxPage,
-			images: text,
-		})
-
-		return
 	}
 
-	private addToPlaylistByIndex(indexes: number[]): Music[] | 'all' {
-		if (this.searchResult === undefined || this.searchResult.type !== 'musics') {
+	private addToPlaylistByIndex(indexes: string[]): Music[] | 'all' {
+		if (this.searchResult.kind !== 'musics') {
 			return []
 		}
 
@@ -157,12 +168,10 @@ export class AddInteractor {
 		}
 
 		const addedMusics: Music[] = []
-		for (const i of indexes) {
-			if (!isNaN(i) && 0 <= i && i <= this.searchResult.value.length) {
-				const music = this.searchResult.value[i]
-				addedMusics.push(music)
-				this.playlist.addMusic(music)
-			}
+		for (const i of parseIndexes(indexes, 0, this.searchResult.value.length)) {
+			const music = this.searchResult.value[i]
+			addedMusics.push(music)
+			this.playlist.addMusic(music)
 		}
 
 		return addedMusics
@@ -219,12 +228,12 @@ export class AddInteractor {
 		}
 
 		if (commandName === 'select') {
-			await this.select(parseInt(args[0], 10) || 0)
+			await this.select(args)
 			return
 		}
 
 		if (commandName === 'add') {
-			const res = this.addToPlaylistByIndex(args.map(x => parseInt(x, 10)))
+			const res = this.addToPlaylistByIndex(args)
 			if (res === 'all') {
 				await this.gc.send(msg, '全ての曲を追加したロボ')
 			} else {
@@ -246,7 +255,7 @@ export class AddInteractor {
 
 			this.playlist.clear()
 
-			const res = this.addToPlaylistByIndex(args.map(x => parseInt(x, 10)))
+			const res = this.addToPlaylistByIndex(args)
 
 			await this.feature.makeConnection(member.voice.channel)
 			await this.feature.play()

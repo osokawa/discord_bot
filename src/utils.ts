@@ -1,7 +1,11 @@
 import lodash from 'lodash'
 import * as discordjs from 'discord.js'
 
-export function unreachable(): never {
+export function unreachable(): never
+export function unreachable(_: never): never
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function unreachable(_?: unknown): never {
 	throw Error('This must never happen!')
 }
 
@@ -281,3 +285,28 @@ export async function forEachAsyncOf<T>(
 }
 
 export type LikeTextChannel = discordjs.TextChannel | discordjs.DMChannel
+
+export type PaginationResult<T> =
+	| { kind: 'ok'; maxPage: number; value: T[]; firstIndex: number }
+	| { kind: 'invalidPageId'; maxPage: number }
+	| { kind: 'empty' }
+
+export function pagination<T>(
+	array: T[],
+	page: number,
+	{ pageLength } = { pageLength: 20 }
+): PaginationResult<T> {
+	if (array.length === 0) {
+		return { kind: 'empty' }
+	}
+
+	const maxPage = Math.ceil(array.length / pageLength)
+
+	if (page < 1 || maxPage < page) {
+		return { kind: 'invalidPageId', maxPage }
+	}
+
+	const firstIndex = pageLength * (page - 1)
+	const pagedArray = array.slice(firstIndex, pageLength * page)
+	return { kind: 'ok', maxPage, value: pagedArray, firstIndex }
+}
