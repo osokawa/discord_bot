@@ -1,22 +1,13 @@
-import { promises as fs } from 'fs'
-import TOML from '@iarna/toml'
-import lodash from 'lodash'
 import * as discordjs from 'discord.js'
-import * as path from 'path'
 
 import CommonFeatureBase from 'Src/features/common-feature-base'
 import { Command } from 'Src/features/command'
-import { StorageType } from 'Src/features/storage'
 import GlobalConfig from 'Src/global-config'
 import * as utils from 'Src/utils'
 
-import { Music } from 'Src/features/play-music/music'
 import { Playlist } from 'Src/features/play-music/playlist'
 import { MusicDatabase } from 'Src/features/play-music/music-database'
 import { AddInteractor } from 'Src/features/play-music/add-interactor'
-
-type MusicList = Music[]
-type MusicLists = Map<string, MusicList>
 
 class PlayMusicCommand implements Command {
 	private readonly gc: GlobalConfig
@@ -127,7 +118,11 @@ class PlayMusicCommand implements Command {
 		}
 	}
 
-	async reload(args: string[], msg: discordjs.Message): Promise<void> {
+	async stop(): Promise<void> {
+		await this.feature.closeConnection()
+	}
+
+	async reload(): Promise<void> {
 		await this.feature.reload()
 	}
 
@@ -136,37 +131,14 @@ class PlayMusicCommand implements Command {
 			{
 				play: (a, m) => this.play(a, m),
 				add: (a, m) => this.add(a, m),
-				stop: () => this.feature.closeConnection(),
-				reload: (a, m) => this.reload(a, m),
+				stop: () => this.stop(),
+				reload: () => this.reload(),
 				edit: (a, m) => this.edit(a, m),
 			},
 			args,
 			msg
 		)
 	}
-}
-
-async function loadPlaylists(dir: string): Promise<MusicLists> {
-	const files = await fs.readdir(dir)
-	const musicLists: MusicLists = new Map()
-
-	for (const file of files) {
-		const toml = await fs.readFile(path.join(dir, file), 'utf-8')
-		const parsed = await TOML.parse.async(toml)
-		const musicListName = parsed.name as string
-		musicLists.set(
-			musicListName,
-			(parsed.musics as MusicList).map(
-				(x): Music => ({ ...x, memberMusicList: musicListName })
-			)
-		)
-	}
-
-	return musicLists
-}
-
-function getAllMusics(musicLists: MusicLists): Music[] {
-	return lodash.flatten(Array.from(musicLists.values()))
 }
 
 export class FeaturePlayMusic extends CommonFeatureBase {
@@ -208,7 +180,7 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 		this.database = database
 	}
 
-	async play(): Promise<void> {
+	play(): Promise<void> {
 		if (this.connection === undefined) {
 			throw '接続中のコネクションがない'
 		}
@@ -221,7 +193,6 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 		this.destroyDispather()
 		this.dispatcher = this.connection.play(music.path)
 		this.dispatcher.on('finish', () => {
-			console.log('on finish')
 			this.destroyDispather()
 			if (this.connection === undefined) {
 				return
@@ -234,6 +205,8 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 			this.playlist.next()
 			this.play()
 		})
+
+		return Promise.resolve()
 	}
 
 	destroyDispather(): void {
