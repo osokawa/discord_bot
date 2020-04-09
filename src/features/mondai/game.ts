@@ -253,7 +253,7 @@ export class Game {
 			await this.gc.sendToChannel(this.channelInstance.channel, 'mondai.repeatResult', {
 				correctCount: this.correctCount,
 			})
-			if (!this.isAudioMode && 10 <= this.correctCount) {
+			if (!this.isAudioMode && 10 <= this.correctCount && 0 < this.incorrectImageLog.length) {
 				const buf = await generateImageMap(
 					1920,
 					1080,
