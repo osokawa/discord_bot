@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs'
 import * as discordjs from 'discord.js'
+import lodash from 'lodash'
 
 import CommonFeatureBase from 'Src/features/common-feature-base'
 import { Command } from 'Src/features/command'
@@ -55,6 +56,13 @@ export class CustomReply {
 				return
 			}
 			options.files = [this.images.getImagePathById(utils.randomPick(list))]
+		} else if (response.action === 'senko') {
+			const chars = [...'せんここうやん']
+			const generated = lodash
+				.range(chars.length)
+				.map(() => utils.randomPick(chars))
+				.join('')
+			text = `${generated}!`
 		} else {
 			const imageId = response.image
 			if (imageId) {
