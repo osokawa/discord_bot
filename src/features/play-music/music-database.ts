@@ -4,6 +4,8 @@ import lodash from 'lodash'
 import * as path from 'path'
 import Fuse from 'fuse.js'
 
+import * as utils from 'Src/utils'
+
 import { Music } from 'Src/features/play-music/music'
 
 export type MusicList = Music[]
@@ -48,7 +50,7 @@ function createMap<K, V>(array: V[], keyFunc: (val: V) => K | undefined): Map<K,
 			res.set(key, [])
 		}
 
-		res.get(key)!.push(i)
+		;(res.get(key) ?? utils.unreachable()).push(i)
 	}
 	return res
 }

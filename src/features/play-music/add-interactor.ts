@@ -8,7 +8,7 @@ import { FeaturePlayMusic } from 'Src/features/play-music'
 import { Music } from 'Src/features/play-music/music'
 import { Playlist } from 'Src/features/play-music/playlist'
 
-interface IListDisplayable {
+interface ListDisplayable {
 	toListString(): string
 }
 
@@ -203,85 +203,69 @@ export class AddInteractor {
 			return
 		}
 
-		const commandName = res[0]
-		const args = res.splice(1)
+		utils.subCommandProxy(
+			{
+				help: async () => {
+					await this.gc.send(msg, 'playMusic.interactor.help')
+				},
+				search: async args => {
+					if (args.length < 1) {
+						await this.gc.send(msg, '検索キーワードを指定するロボ')
+						return
+					}
 
-		if (commandName === 'help') {
-			await this.gc.send(msg, 'playMusic.interactor.help')
-			return
-		}
+					await this.search(args[0])
+				},
+				searchArtist: async args => {
+					if (args.length < 1) {
+						await this.gc.send(msg, '検索キーワードを指定するロボ')
+						return
+					}
 
-		if (commandName === 'search') {
-			if (args.length < 1) {
-				await this.gc.send(msg, '検索キーワードを指定するロボ')
-				return
-			}
+					await this.searchArtist(args[0])
+				},
+				searchAlbum: async args => {
+					if (args.length < 1) {
+						await this.gc.send(msg, '検索キーワードを指定するロボ')
+						return
+					}
 
-			await this.search(args[0])
-			return
-		}
+					await this.searchAlbum(args[0])
+				},
+				show: async args => {
+					await this.show(parseInt(args[0], 10) || 1)
+				},
+				select: async args => {
+					await this.select(args)
+				},
+				add: async args => {
+					await this.add(args)
+				},
+				play: async args => {
+					const member = msg.member
+					if (!member) {
+						return
+					}
 
-		if (commandName === 'searchArtist') {
-			if (args.length < 1) {
-				await this.gc.send(msg, '検索キーワードを指定するロボ')
-				return
-			}
+					if (!member.voice.channel) {
+						await this.gc.send(msg, 'playMusic.haveToJoinVoiceChannel')
+						return
+					}
 
-			await this.searchArtist(args[0])
-			return
-		}
+					this.playlist.clear()
 
-		if (commandName === 'searchAlbum') {
-			if (args.length < 1) {
-				await this.gc.send(msg, '検索キーワードを指定するロボ')
-				return
-			}
+					await this.add(args)
 
-			await this.searchAlbum(args[0])
-			return
-		}
-
-		if (commandName === 'show') {
-			await this.show(parseInt(args[0], 10) || 1)
-			return
-		}
-
-		if (commandName === 'select') {
-			await this.select(args)
-			return
-		}
-
-		if (commandName === 'add') {
-			await this.add(args)
-			return
-		}
-
-		if (commandName === 'play') {
-			const member = msg.member
-			if (!member) {
-				return
-			}
-
-			if (!member.voice.channel) {
-				await this.gc.send(msg, 'playMusic.haveToJoinVoiceChannel')
-				return
-			}
-
-			this.playlist.clear()
-
-			await this.add(args)
-
-			await this.feature.makeConnection(member.voice.channel)
-			await this.feature.play()
-			return
-		}
-
-		if (commandName === 'quit') {
-			this.done()
-			await this.gc.send(msg, 'playMusic.interactor.quit')
-			return
-		}
-
-		await this.gc.send(msg, 'playMusic.interactor.invalidCommand')
+					await this.feature.makeConnection(member.voice.channel)
+					await this.feature.play()
+				},
+				quit: async () => {
+					this.done()
+					await this.gc.send(msg, 'playMusic.interactor.quit')
+				},
+			},
+			res,
+			msg
+		)
 	}
 }
