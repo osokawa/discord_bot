@@ -188,7 +188,7 @@ export class AddInteractor {
 				},
 				search: async args => {
 					if (args.length < 1) {
-						await this.gc.send(msg, '検索キーワードを指定するロボ')
+						await this.gc.send(msg, 'playMusic.interactor.haveToSpecifyKeyword')
 						return
 					}
 
@@ -196,7 +196,7 @@ export class AddInteractor {
 				},
 				searchArtist: async args => {
 					if (args.length < 1) {
-						await this.gc.send(msg, '検索キーワードを指定するロボ')
+						await this.gc.send(msg, 'playMusic.interactor.haveToSpecifyKeyword')
 						return
 					}
 
@@ -204,7 +204,7 @@ export class AddInteractor {
 				},
 				searchAlbum: async args => {
 					if (args.length < 1) {
-						await this.gc.send(msg, '検索キーワードを指定するロボ')
+						await this.gc.send(msg, 'playMusic.interactor.haveToSpecifyKeyword')
 						return
 					}
 
