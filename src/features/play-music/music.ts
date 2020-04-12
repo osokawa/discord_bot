@@ -1,5 +1,6 @@
-import ytdl from 'ytdl-core'
 import * as discordjs from 'discord.js'
+import youtubedl from 'youtube-dl'
+import { Readable } from 'stream'
 
 type FieldNames<T> = {
 	[P in keyof T]: T[P] extends Function ? never : P
@@ -124,8 +125,8 @@ export class YouTubeMusic implements Music {
 	createDispatcher(
 		connection: discordjs.VoiceConnection
 	): [discordjs.StreamDispatcher, (() => void) | undefined] {
-		// audioonly にすると途中で止まる動画がある?
-		const stream = ytdl(this.url)
+		// とりあえず動く
+		const stream = youtubedl(this.url, [], {}) as Readable
 		return [
 			connection.play(stream),
 			(): void => {
