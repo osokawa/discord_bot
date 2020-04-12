@@ -1,3 +1,4 @@
+import ytdl from 'ytdl-core'
 import * as discordjs from 'discord.js'
 
 type FieldNames<T> = {
@@ -33,7 +34,10 @@ export type MusicMetadataObject = Fields<MusicMetadata>
 
 export interface Music extends ListDisplayable, Selectable {
 	getTitle(): string
-	createDispatcher(connection: discordjs.VoiceConnection): discordjs.StreamDispatcher
+	// 戻り値の関数は再生終了後の後処理用
+	createDispatcher(
+		connection: discordjs.VoiceConnection
+	): [discordjs.StreamDispatcher, (() => void) | undefined]
 }
 
 export class MusicFile implements Music {
@@ -61,8 +65,10 @@ export class MusicFile implements Music {
 		return
 	}
 
-	createDispatcher(connection: discordjs.VoiceConnection): discordjs.StreamDispatcher {
-		return connection.play(this.path)
+	createDispatcher(
+		connection: discordjs.VoiceConnection
+	): [discordjs.StreamDispatcher, (() => void) | undefined] {
+		return [connection.play(this.path), undefined]
 	}
 }
 
@@ -97,5 +103,34 @@ export class Album implements ListDisplayable, Selectable {
 
 	select(): Music[] | undefined {
 		return this.musics
+	}
+}
+
+export class YouTubeMusic implements Music {
+	constructor(private url: string) {}
+
+	getTitle(): string {
+		return this.url
+	}
+
+	toListString(): string {
+		return `(youtube) ${this.url}`
+	}
+
+	select(): Music[] | undefined {
+		return
+	}
+
+	createDispatcher(
+		connection: discordjs.VoiceConnection
+	): [discordjs.StreamDispatcher, (() => void) | undefined] {
+		// audioonly にすると途中で止まる動画がある?
+		const stream = ytdl(this.url)
+		return [
+			connection.play(stream),
+			(): void => {
+				stream.destroy()
+			},
+		]
 	}
 }
