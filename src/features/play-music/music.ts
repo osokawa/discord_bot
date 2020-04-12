@@ -1,3 +1,5 @@
+import * as discordjs from 'discord.js'
+
 type FieldNames<T> = {
 	[P in keyof T]: T[P] extends Function ? never : P
 }[keyof T]
@@ -29,7 +31,12 @@ export class MusicMetadata {
 
 export type MusicMetadataObject = Fields<MusicMetadata>
 
-export class Music implements ListDisplayable, Selectable {
+export interface Music extends ListDisplayable, Selectable {
+	getTitle(): string
+	createDispatcher(connection: discordjs.VoiceConnection): discordjs.StreamDispatcher
+}
+
+export class MusicFile implements Music {
 	readonly title: string
 	readonly path: string
 	readonly metadata: MusicMetadata
@@ -42,6 +49,10 @@ export class Music implements ListDisplayable, Selectable {
 		this.memberMusicList = obj.memberMusicList
 	}
 
+	getTitle(): string {
+		return this.metadata.title
+	}
+
 	toListString(): string {
 		return `${this.metadata.title} (from: ${this.memberMusicList})`
 	}
@@ -49,9 +60,13 @@ export class Music implements ListDisplayable, Selectable {
 	select(): Music[] | undefined {
 		return
 	}
+
+	createDispatcher(connection: discordjs.VoiceConnection): discordjs.StreamDispatcher {
+		return connection.play(this.path)
+	}
 }
 
-export type MusicObject = Fields<Music> & { readonly metadata: MusicMetadataObject }
+export type MusicObject = Fields<MusicFile> & { readonly metadata: MusicMetadataObject }
 
 export class Artist implements ListDisplayable, Selectable {
 	constructor(private readonly _name: string, private readonly musics: Music[]) {}

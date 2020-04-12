@@ -1,4 +1,5 @@
 import * as discordjs from 'discord.js'
+import ytdl from 'ytdl-core'
 
 import CommonFeatureBase from 'Src/features/common-feature-base'
 import { Command } from 'Src/features/command'
@@ -61,7 +62,7 @@ class PlayMusicCommand implements Command {
 			if (0 < res.length) {
 				const music = res[0]
 				this.feature.playlist.addMusic(music)
-				msg.reply(`${music.metadata.title} を再生するロボ!`)
+				msg.reply(`${music.getTitle()} を再生するロボ!`)
 			} else {
 				msg.reply('そんな曲は無いロボ')
 			}
@@ -111,7 +112,7 @@ class PlayMusicCommand implements Command {
 			const res = this.feature.database.search(arg)[0]
 			if (res) {
 				this.feature.playlist.addMusic(res)
-				msg.reply(`${res.title} をプレイリストに追加するロボ!`)
+				msg.reply(`${res.getTitle()} をプレイリストに追加するロボ!`)
 			} else {
 				msg.reply('そんな曲は無いロボ')
 			}
@@ -191,7 +192,8 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 		}
 
 		this.destroyDispather()
-		this.dispatcher = this.connection.play(music.path)
+		this.dispatcher = music.createDispatcher(this.connection)
+
 		this.dispatcher.on('finish', () => {
 			this.destroyDispather()
 			if (this.connection === undefined) {
@@ -204,6 +206,13 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 
 			this.playlist.next()
 			this.play()
+		})
+
+		this.dispatcher.on('error', error => {
+			console.error(error)
+			this.destroyDispather()
+
+			// TODO: どうにかしてテキストチャンネルに通知を送りたい所
 		})
 
 		return Promise.resolve()

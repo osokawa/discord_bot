@@ -6,9 +6,9 @@ import Fuse from 'fuse.js'
 
 import * as utils from 'Src/utils'
 
-import { Music, MusicObject, Artist, Album } from 'Src/features/play-music/music'
+import { Music, MusicFile, MusicObject, Artist, Album } from 'Src/features/play-music/music'
 
-type MusicList = Music[]
+type MusicList = MusicFile[]
 type MusicLists = Map<string, MusicList>
 
 export type MusicListFormat = {
@@ -27,14 +27,14 @@ async function loadMusicLists(dir: string): Promise<MusicLists> {
 		const musicListName = parsed.name
 		musicLists.set(
 			musicListName,
-			parsed.musics.map(x => new Music({ ...x, memberMusicList: musicListName }))
+			parsed.musics.map(x => new MusicFile({ ...x, memberMusicList: musicListName }))
 		)
 	}
 
 	return musicLists
 }
 
-function getAllMusics(musicLists: MusicLists): Music[] {
+function getAllMusics(musicLists: MusicLists): MusicFile[] {
 	return lodash.flatten(Array.from(musicLists.values()))
 }
 
@@ -56,12 +56,12 @@ function createMap<K, V>(array: V[], keyFunc: (val: V) => K | undefined): Map<K,
 }
 
 export class MusicDatabase {
-	private allMusics: Music[] = []
-	private allMusicsFuse!: Fuse<Music, Fuse.FuseOptions<Music>>
+	private allMusics: MusicFile[] = []
+	private allMusicsFuse!: Fuse<MusicFile, Fuse.FuseOptions<Music>>
 
-	private musicLists: Map<string, Music[]> = new Map()
-	private artists: Map<string, Music[]> = new Map()
-	private albums: Map<string, Music[]> = new Map()
+	private musicLists: Map<string, MusicFile[]> = new Map()
+	private artists: Map<string, MusicFile[]> = new Map()
+	private albums: Map<string, MusicFile[]> = new Map()
 
 	constructor(public readonly musicListsDir: string) {}
 
@@ -80,8 +80,8 @@ export class MusicDatabase {
 		})
 	}
 
-	search(keyword: string): Music[] {
-		return this.allMusicsFuse.search(keyword) as Music[]
+	search(keyword: string): MusicFile[] {
+		return this.allMusicsFuse.search(keyword) as MusicFile[]
 	}
 
 	private searchName<T, M>(
