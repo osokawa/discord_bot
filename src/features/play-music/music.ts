@@ -3,6 +3,14 @@ type FieldNames<T> = {
 }[keyof T]
 type Fields<T> = { [P in FieldNames<T>]: T[P] }
 
+export interface ListDisplayable {
+	toListString(): string
+}
+
+export interface Selectable {
+	select(): Music[] | undefined
+}
+
 export class MusicMetadata {
 	readonly title: string
 	readonly album?: string
@@ -21,7 +29,7 @@ export class MusicMetadata {
 
 export type MusicMetadataObject = Fields<MusicMetadata>
 
-export class Music {
+export class Music implements ListDisplayable, Selectable {
 	readonly title: string
 	readonly path: string
 	readonly metadata: MusicMetadata
@@ -33,6 +41,46 @@ export class Music {
 		this.metadata = new MusicMetadata(obj.metadata)
 		this.memberMusicList = obj.memberMusicList
 	}
+
+	toListString(): string {
+		return `${this.metadata.title} (from: ${this.memberMusicList})`
+	}
+
+	select(): Music[] | undefined {
+		return
+	}
 }
 
 export type MusicObject = Fields<Music> & { readonly metadata: MusicMetadataObject }
+
+export class Artist implements ListDisplayable, Selectable {
+	constructor(private readonly _name: string, private readonly musics: Music[]) {}
+
+	get name(): string {
+		return this._name
+	}
+
+	toListString(): string {
+		return this.name
+	}
+
+	select(): Music[] | undefined {
+		return this.musics
+	}
+}
+
+export class Album implements ListDisplayable, Selectable {
+	constructor(private readonly _name: string, private readonly musics: Music[]) {}
+
+	get name(): string {
+		return this._name
+	}
+
+	toListString(): string {
+		return this.name
+	}
+
+	select(): Music[] | undefined {
+		return this.musics
+	}
+}

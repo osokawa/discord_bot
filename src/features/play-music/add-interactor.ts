@@ -5,17 +5,13 @@ import GlobalConfig from 'Src/global-config'
 import * as utils from 'Src/utils'
 
 import { FeaturePlayMusic } from 'Src/features/play-music'
-import { Music } from 'Src/features/play-music/music'
+import { Music, Artist, Album } from 'Src/features/play-music/music'
 import { Playlist } from 'Src/features/play-music/playlist'
-
-interface ListDisplayable {
-	toListString(): string
-}
 
 type SearchResultType =
 	| { kind: 'musics'; value: Music[] }
-	| { kind: 'artists'; value: string[] }
-	| { kind: 'albums'; value: string[] }
+	| { kind: 'artists'; value: Artist[] }
+	| { kind: 'albums'; value: Album[] }
 	| { kind: 'undefined' }
 
 function parseIndexes(strings: string[], min: number, max: number): number[] {
@@ -95,21 +91,19 @@ export class AddInteractor {
 	async select(indexes: string[]): Promise<void> {
 		const sr = this.searchResult
 
-		const base = (names: string[], func: (name: string) => Music[]): void => {
+		if (sr.kind !== 'undefined') {
 			const res = lodash.flatten(
-				parseIndexes(indexes, 0, names.length).map(i => func(names[i]))
+				parseIndexes(indexes, 0, sr.value.length).map(i => sr.value[i].select())
 			)
-			this.setMusicResult(res)
-			this.show(1)
+
+			if (res.every(x => x !== undefined)) {
+				this.setMusicResult(res as Music[])
+				this.show(1)
+				return
+			}
 		}
 
-		if (sr.kind === 'artists') {
-			base(sr.value, name => this.feature.database.fromArtist(name) ?? utils.unreachable())
-		} else if (sr.kind === 'albums') {
-			base(sr.value, name => this.feature.database.fromAlbum(name) ?? utils.unreachable())
-		} else {
-			await this.gc.sendToChannel(this.channel, 'playMusic.interactor.selectInvalidState')
-		}
+		await this.gc.sendToChannel(this.channel, 'playMusic.interactor.selectInvalidState')
 	}
 
 	async show(pageNumber: number): Promise<void> {
@@ -118,7 +112,7 @@ export class AddInteractor {
 			return
 		}
 
-		const val: (Music | string)[] = this.searchResult.value
+		const val: (Music | Artist | Album)[] = this.searchResult.value
 		const res = utils.pagination(val, pageNumber)
 
 		if (res.kind === 'empty') {
@@ -128,25 +122,9 @@ export class AddInteractor {
 				maxPage: res.maxPage,
 			})
 		} else if (res.kind === 'ok') {
-			let text
-
-			if (this.searchResult.kind === 'musics') {
-				text = (res.value as Music[])
-					.map(
-						(v, i) =>
-							`${res.firstIndex + i}: ${v.metadata.title} (from ${v.memberMusicList})`
-					)
-					.join('\n')
-			} else if (
-				this.searchResult.kind === 'albums' ||
-				this.searchResult.kind === 'artists'
-			) {
-				text = (res.value as string[])
-					.map((v, i) => `${res.firstIndex + i}: ${v}`)
-					.join('\n')
-			} else {
-				utils.unreachable(this.searchResult)
-			}
+			const text = (res.value as Music[])
+				.map((v, i) => `${res.firstIndex + i}: ${v.toListString()}`)
+				.join('\n')
 
 			await this.gc.sendToChannel(this.channel, 'playMusic.interactor.list', {
 				currentPage: pageNumber,
