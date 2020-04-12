@@ -19,7 +19,8 @@
     "ffmpeg-static": "^4.0.1",
     "fuse.js": "^5.0.1-beta",
     "jimp": "^0.9.5",
-    "lodash": "^4.17.15"
+    "lodash": "^4.17.15",
+    "music-metadata": "^6.3.6"
   },
   "devDependencies": {
     "@types/jest": "^25.1.4",

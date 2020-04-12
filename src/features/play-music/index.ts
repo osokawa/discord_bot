@@ -1,22 +1,13 @@
-import { promises as fs } from 'fs'
-import TOML from '@iarna/toml'
-import lodash from 'lodash'
 import * as discordjs from 'discord.js'
-import * as path from 'path'
-import Fuse from 'fuse.js'
 
 import CommonFeatureBase from 'Src/features/common-feature-base'
 import { Command } from 'Src/features/command'
-import { StorageType } from 'Src/features/storage'
 import GlobalConfig from 'Src/global-config'
-
 import * as utils from 'Src/utils'
 
-import { Music } from 'Src/features/play-music/music'
 import { Playlist } from 'Src/features/play-music/playlist'
-
-type MusicList = Music[]
-type MusicLists = Map<string, MusicList>
+import { MusicDatabase } from 'Src/features/play-music/music-database'
+import { AddInteractor } from 'Src/features/play-music/add-interactor'
 
 class PlayMusicCommand implements Command {
 	private readonly gc: GlobalConfig
@@ -66,10 +57,11 @@ class PlayMusicCommand implements Command {
 		this.feature.playlist.clear()
 
 		for (const arg of args) {
-			const res = this.feature.allMusicsFuse.search(arg)[0] as Music | undefined
-			if (res) {
-				this.feature.playlist.addMusic(res)
-				msg.reply(`${res.title} を再生するロボ!`)
+			const res = this.feature.database.search(arg)
+			if (0 < res.length) {
+				const music = res[0]
+				this.feature.playlist.addMusic(music)
+				msg.reply(`${music.metadata.title} を再生するロボ!`)
 			} else {
 				msg.reply('そんな曲は無いロボ')
 			}
@@ -77,6 +69,33 @@ class PlayMusicCommand implements Command {
 
 		await this.feature.makeConnection(member.voice.channel)
 		await this.feature.play()
+	}
+
+	async edit(rawArgs: string[], msg: discordjs.Message): Promise<void> {
+		let args
+		try {
+			;({ args } = utils.parseCommandArgs(rawArgs, [], 0))
+		} catch (e) {
+			await this.gc.send(msg, 'playMusic.invalidCommand', { e })
+			return
+		}
+
+		if (1 < args.length) {
+			await msg.reply('駄目なメッセージの引数の数')
+			return
+		}
+
+		if (this.feature.interactors.size !== 0) {
+			await msg.reply('今まさにインタラクションモード')
+			return
+		}
+
+		const i = this.feature.createInteractor(msg)
+		await i.welcome()
+		if (args.length === 1) {
+			await i.search(args[0])
+		}
+		return
 	}
 
 	async add(rawArgs: string[], msg: discordjs.Message): Promise<void> {
@@ -89,7 +108,7 @@ class PlayMusicCommand implements Command {
 		}
 
 		for (const arg of args) {
-			const res = this.feature.allMusicsFuse.search(arg)[0] as Music | undefined
+			const res = this.feature.database.search(arg)[0]
 			if (res) {
 				this.feature.playlist.addMusic(res)
 				msg.reply(`${res.title} をプレイリストに追加するロボ!`)
@@ -99,7 +118,11 @@ class PlayMusicCommand implements Command {
 		}
 	}
 
-	async reload(args: string[], msg: discordjs.Message): Promise<void> {
+	async stop(): Promise<void> {
+		await this.feature.closeConnection()
+	}
+
+	async reload(): Promise<void> {
 		await this.feature.reload()
 	}
 
@@ -108,8 +131,9 @@ class PlayMusicCommand implements Command {
 			{
 				play: (a, m) => this.play(a, m),
 				add: (a, m) => this.add(a, m),
-				stop: () => this.feature.closeConnection(),
-				reload: (a, m) => this.reload(a, m),
+				stop: () => this.stop(),
+				reload: () => this.reload(),
+				edit: (a, m) => this.edit(a, m),
 			},
 			args,
 			msg
@@ -117,28 +141,11 @@ class PlayMusicCommand implements Command {
 	}
 }
 
-async function loadPlaylists(dir: string): Promise<MusicLists> {
-	const files = await fs.readdir(dir)
-	const musicLists: MusicLists = new Map()
-
-	for (const file of files) {
-		const toml = await fs.readFile(path.join(dir, file), 'utf-8')
-		const parsed = await TOML.parse.async(toml)
-		musicLists.set(parsed.name as string, parsed.musics as MusicList)
-	}
-
-	return musicLists
-}
-
-function getAllMusics(musicLists: MusicLists): Music[] {
-	return lodash.flatten(Array.from(musicLists.values()))
-}
-
 export class FeaturePlayMusic extends CommonFeatureBase {
+	interactors: Set<AddInteractor> = new Set()
 	private connection: discordjs.VoiceConnection | undefined
 	private dispatcher: discordjs.StreamDispatcher | undefined
-	musicLists: MusicLists = new Map()
-	allMusicsFuse!: Fuse<Music, Fuse.FuseOptions<Music>>
+	database!: MusicDatabase
 
 	playlist: Playlist = new Playlist()
 	currentPlayingTrack: number | undefined
@@ -153,15 +160,27 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 	}
 
 	async onMessageImpl(msg: discordjs.Message): Promise<void> {
-		// なんか
+		for (const i of this.interactors) {
+			await i.onMessage(msg)
+		}
+	}
+
+	createInteractor(msg: discordjs.Message): AddInteractor {
+		const i = new AddInteractor(msg.channel, this, this.playlist, () => {
+			this.interactors.delete(i)
+		})
+		this.interactors.add(i)
+
+		return i
 	}
 
 	async reload(): Promise<void> {
-		this.musicLists = await loadPlaylists('./config/playlists')
-		this.allMusicsFuse = new Fuse(getAllMusics(this.musicLists), { keys: ['title'] })
+		const database = new MusicDatabase('./config/playlists')
+		await database.init()
+		this.database = database
 	}
 
-	async play(): Promise<void> {
+	play(): Promise<void> {
 		if (this.connection === undefined) {
 			throw '接続中のコネクションがない'
 		}
@@ -174,7 +193,6 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 		this.destroyDispather()
 		this.dispatcher = this.connection.play(music.path)
 		this.dispatcher.on('finish', () => {
-			console.log('on finish')
 			this.destroyDispather()
 			if (this.connection === undefined) {
 				return
@@ -187,6 +205,8 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 			this.playlist.next()
 			this.play()
 		})
+
+		return Promise.resolve()
 	}
 
 	destroyDispather(): void {

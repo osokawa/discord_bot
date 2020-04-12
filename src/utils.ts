@@ -1,22 +1,89 @@
 import lodash from 'lodash'
 import * as discordjs from 'discord.js'
 
-export function unreachable(): never {
+export function unreachable(): never
+export function unreachable(_: never): never
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function unreachable(_?: unknown): never {
 	throw Error('This must never happen!')
 }
 
-export function parseCommand(string: string): { commandName: string; args: string[] } | undefined {
-	const found = /^!([a-zA-Z_-]+)(\s+?.+)?$/.exec(string)
-	if (!found) {
+export function parseShellLikeCommand(string: string): string[] | undefined {
+	let state: 'normal' | 'singlequote' | 'doublequote' | 'backslash' = 'normal'
+
+	const res: string[] = []
+	let current = ''
+	let allowEmpty = false
+
+	for (const char of string) {
+		if (state === 'backslash') {
+			current += char
+			state = 'doublequote'
+			continue
+		}
+
+		if (state === 'doublequote' && char === '\\') {
+			state = 'backslash'
+			continue
+		}
+
+		if (char === '"') {
+			if (state === 'normal') {
+				state = 'doublequote'
+				allowEmpty = true
+				continue
+			}
+			if (state === 'doublequote') {
+				state = 'normal'
+				continue
+			}
+		}
+
+		if (char === "'") {
+			if (state === 'normal') {
+				state = 'singlequote'
+				allowEmpty = true
+				continue
+			}
+			if (state === 'singlequote') {
+				state = 'normal'
+				continue
+			}
+		}
+
+		if (/\s/.test(char)) {
+			if (state === 'normal') {
+				if (current !== '' || allowEmpty) {
+					res.push(current)
+				}
+				current = ''
+				allowEmpty = false
+				continue
+			}
+		}
+
+		current += char
+	}
+
+	if (state !== 'normal') {
 		return
 	}
 
-	const commandName = found[1].toLowerCase()
+	res.push(current)
+	return res
+}
 
-	const left = found[2]
-	const args = left ? left.split(/\s+/).filter(x => x !== '') : []
+export function parseCommand(string: string): { commandName: string; args: string[] } | undefined {
+	const res = parseShellLikeCommand(string)
+	if (res === undefined) {
+		return
+	}
 
-	return { commandName, args }
+	if (0 < res.length && /^!([a-zA-Z_-]+)$/.test(res[0])) {
+		const [name, ...args] = res
+		return { commandName: name.substring(1).toLowerCase(), args: args ?? [] }
+	}
 }
 
 export function parseCommandArgs(
@@ -218,3 +285,28 @@ export async function forEachAsyncOf<T>(
 }
 
 export type LikeTextChannel = discordjs.TextChannel | discordjs.DMChannel
+
+export type PaginationResult<T> =
+	| { kind: 'ok'; maxPage: number; value: T[]; firstIndex: number }
+	| { kind: 'invalidPageId'; maxPage: number }
+	| { kind: 'empty' }
+
+export function pagination<T>(
+	array: T[],
+	page: number,
+	{ pageLength } = { pageLength: 20 }
+): PaginationResult<T> {
+	if (array.length === 0) {
+		return { kind: 'empty' }
+	}
+
+	const maxPage = Math.ceil(array.length / pageLength)
+
+	if (page < 1 || maxPage < page) {
+		return { kind: 'invalidPageId', maxPage }
+	}
+
+	const firstIndex = pageLength * (page - 1)
+	const pagedArray = array.slice(firstIndex, pageLength * page)
+	return { kind: 'ok', maxPage, value: pagedArray, firstIndex }
+}

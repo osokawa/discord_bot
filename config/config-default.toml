@@ -86,3 +86,45 @@ invalidPageId = '無効なページ番号ロボ。最大ページ数は<%= maxPa
 removingComplete = '画像を削除したロボ!'
 sendPreview = 'これがその画像ロボ!'
 localReloadingComplete = 'ローカルにある画像を再読込したロボ!'
+
+[message.playMusic]
+haveToJoinVoiceChannel = 'ボイスチャンネルに入ってから言うロボ'
+
+[message.playMusic.interactor]
+welcome = '''
+曲追加モードに入ったロボ
+操作方法は `help` で出るロボよ'''
+invalidCommand = '不明なコマンドロボ! ヘルプを表示するには `help` と、曲追加モードから抜けるには `quit` とタイプするロボ'
+help = '''
+`<>` は必須引数を、`[]` はオプション引数を表すロボ
+
+`search <キーワード>` キーワードで曲を検索するロボ
+`searchArtist <アーティスト名>` アーティストを検索するロボ
+`searchAlbum <アルバム名>` アルバムを検索するロボ
+`show [ページ番号]` 検索結果を表示するロボ
+`add [番号1] [番号2...]` 指定した番号の曲をプレイリストに追加するロボ
+`play [番号1] [番号2...]` 指定した番号の曲でプレイリストを上書きして再生するロボ
+`select [番号1] [番号2...]` 指定した番号の検索結果を選択するロボ
+	例えば検索結果にアーティストが表示されている時に実行すると、そのアーティストの曲が新しい検索結果になるロボ。
+	細かいことはいろいろ試してみて欲しいロボね
+`help` このヘルプを表示するロボ
+`quit` 曲追加モードから抜けるロボ
+
+`add` `play` `select` は番号を指定しないと検索結果の全てが対象になるロボ'''
+quit = '曲追加モードから抜けたロボよ'
+addedMusic = '''
+<% if (all) {
+%>全ての曲を追加したロボ!<%
+} else if (musics.length === 0) {
+%>曲は追加されなかったロボ。ちゃんと番号を確認することロボね<%
+} else {
+%>次の曲をプレイリストに追加したロボ:
+<% for (const m of musics) {
+%><%= m.metadata.title %>
+<% } %><% } %>
+'''
+selectInvalidState = '`select` はアーティスト/アルバムの検索結果がある時だけ使えるロボ'
+resultNotFound = '検索結果に表示するものが無いロボ'
+invalidPageId = '無効なページ番号ロボ。最大ページ数は<%= maxPage %>ロボよ'
+list = "検索結果ロボよー (<%= currentPage %>/<%= maxPage %>):\n<%= results %>"
+haveToSpecifyKeyword = '検索キーワードを指定するロボ'
