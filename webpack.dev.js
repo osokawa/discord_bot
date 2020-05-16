@@ -11,6 +11,9 @@ module.exports = {
 				test: /\.(ts|js)$/,
 				exclude: /node_modules/,
 				loader: 'eslint-loader',
+				options: {
+					fix: true
+				}
 			},
 			...common.module.rules
 		]
