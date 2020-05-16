@@ -219,7 +219,7 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 			this.play()
 		})
 
-		this.dispatcher.on('error', error => {
+		this.dispatcher.on('error', (error) => {
 			console.error(error)
 			this.destroyDispather()
 
