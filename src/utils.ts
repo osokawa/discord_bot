@@ -195,7 +195,7 @@ export function getOption<T>(
 }
 
 export function delay(ms: number): Promise<void> {
-	return new Promise(resolve => {
+	return new Promise((resolve) => {
 		setTimeout(() => {
 			resolve()
 		}, ms)
@@ -223,7 +223,7 @@ export function randomPick<T>(array: T | T[]): T {
 		return array
 	}
 
-	const weights = array.map(x => lodash.get(x, 'weight', 100))
+	const weights = array.map((x) => lodash.get(x, 'weight', 100))
 	return array[weightedRandom(weights)]
 }
 
@@ -250,7 +250,7 @@ export async function subCommandProxy(
 
 export function replaceEmoji(text: string, emojis: discordjs.GuildEmojiManager): string {
 	return text.replace(/:(\w+):/g, (match, emojiName) => {
-		const foundEmoji = emojis.cache.find(x => x.name === emojiName)
+		const foundEmoji = emojis.cache.find((x) => x.name === emojiName)
 		return foundEmoji ? foundEmoji.toString() : match
 	})
 }
@@ -268,7 +268,7 @@ export async function forEachAsyncOf<T>(
 	const errors: any[] = []
 
 	await Promise.all(
-		Array.from(arr, x => {
+		Array.from(arr, (x) => {
 			return (async (): Promise<void> => {
 				try {
 					await doWithX(x)
@@ -284,7 +284,7 @@ export async function forEachAsyncOf<T>(
 	}
 }
 
-export type LikeTextChannel = discordjs.TextChannel | discordjs.DMChannel
+export type LikeTextChannel = discordjs.TextChannel | discordjs.DMChannel | discordjs.NewsChannel
 
 export type PaginationResult<T> =
 	| { kind: 'ok'; maxPage: number; value: T[]; firstIndex: number }

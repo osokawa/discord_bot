@@ -26,7 +26,7 @@ client.on('ready', () => {
 	})()
 })
 
-client.on('message', msg => {
+client.on('message', (msg) => {
 	;(async (): Promise<void> => {
 		if (!ready) {
 			return

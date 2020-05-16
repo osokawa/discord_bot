@@ -27,7 +27,7 @@ async function loadMusicLists(dir: string): Promise<MusicLists> {
 		const musicListName = parsed.name
 		musicLists.set(
 			musicListName,
-			parsed.musics.map(x => new MusicFile({ ...x, memberMusicList: musicListName }))
+			parsed.musics.map((x) => new MusicFile({ ...x, memberMusicList: musicListName }))
 		)
 	}
 
@@ -57,7 +57,7 @@ function createMap<K, V>(array: V[], keyFunc: (val: V) => K | undefined): Map<K,
 
 export class MusicDatabase {
 	private allMusics: MusicFile[] = []
-	private allMusicsFuse!: Fuse<MusicFile, Fuse.FuseOptions<Music>>
+	private allMusicsFuse!: Fuse<MusicFile, Fuse.IFuseOptions<Music>>
 
 	private musicLists: Map<string, MusicFile[]> = new Map()
 	private artists: Map<string, MusicFile[]> = new Map()
@@ -68,8 +68,8 @@ export class MusicDatabase {
 	async init(): Promise<void> {
 		this.musicLists = await loadMusicLists(this.musicListsDir)
 		this.allMusics = getAllMusics(this.musicLists)
-		this.artists = createMap(this.allMusics, v => v.metadata.artist)
-		this.albums = createMap(this.allMusics, v => v.metadata.album)
+		this.artists = createMap(this.allMusics, (v) => v.metadata.artist)
+		this.albums = createMap(this.allMusics, (v) => v.metadata.album)
 
 		this.allMusicsFuse = new Fuse(this.allMusics, {
 			keys: [
@@ -80,8 +80,8 @@ export class MusicDatabase {
 		})
 	}
 
-	search(keyword: string): MusicFile[] {
-		return this.allMusicsFuse.search(keyword) as MusicFile[]
+	search(keyword: string): Music[] {
+		return this.allMusicsFuse.search(keyword).map((x) => x.item)
 	}
 
 	private searchName<T, M>(
@@ -90,11 +90,13 @@ export class MusicDatabase {
 		map: (name: string, musics: M) => T
 	): T[] {
 		const fuse = new Fuse(
-			Array.from(names.keys(), name => ({ name })),
+			Array.from(names.keys(), (name) => ({ name })),
 			{ keys: ['name'] }
 		)
 
-		return fuse.search(keyword).map(x => map(x.name, names.get(x.name) ?? utils.unreachable()))
+		return fuse
+			.search(keyword)
+			.map((x) => map(x.item.name, names.get(x.item.name) ?? utils.unreachable()))
 	}
 
 	searchArtistName(keyword: string): Artist[] {

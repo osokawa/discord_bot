@@ -48,7 +48,7 @@ export class CustomReply {
 		if (response.action === 'gacha') {
 			let list = this.images.images
 			if (response.pattern) {
-				list = list.filter(x => new RegExp(response.pattern).test(x))
+				list = list.filter((x) => new RegExp(response.pattern).test(x))
 			}
 
 			if (list.length === 0) {
@@ -154,7 +154,7 @@ export class FeatureCustomReply extends CommonFeatureBase {
 	}
 
 	async initImpl(): Promise<void> {
-		this.storageDriver.setChannelStorageConstructor(ch => {
+		this.storageDriver.setChannelStorageConstructor((ch) => {
 			const client = new CustomReply(this, ch)
 			client.init()
 			return new StorageType(
@@ -167,9 +167,6 @@ export class FeatureCustomReply extends CommonFeatureBase {
 	}
 
 	async onMessageImpl(msg: discordjs.Message): Promise<void> {
-		await this.storageDriver
-			.channel(msg)
-			.get<CustomReply>('customReply')
-			.onMessage(msg)
+		await this.storageDriver.channel(msg).get<CustomReply>('customReply').onMessage(msg)
 	}
 }
