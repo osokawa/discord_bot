@@ -39,7 +39,7 @@ function parseIndexes(strings: string[], min: number, max: number): number[] {
 		ret.push(index)
 	}
 
-	if (!ret.every(v => min <= v && v <= max)) {
+	if (!ret.every((v) => min <= v && v <= max)) {
 		throw new Error('out of range')
 	}
 
@@ -93,10 +93,10 @@ export class AddInteractor {
 
 		if (sr.kind !== 'undefined') {
 			const res = lodash.flatten(
-				parseIndexes(indexes, 0, sr.value.length).map(i => sr.value[i].select())
+				parseIndexes(indexes, 0, sr.value.length).map((i) => sr.value[i].select())
 			)
 
-			if (res.every(x => x !== undefined)) {
+			if (res.every((x) => x !== undefined)) {
 				this.setMusicResult(res as Music[])
 				this.show(1)
 				return
@@ -186,7 +186,7 @@ export class AddInteractor {
 				help: async () => {
 					await this.gc.send(msg, 'playMusic.interactor.help')
 				},
-				search: async args => {
+				search: async (args) => {
 					if (args.length < 1) {
 						await this.gc.send(msg, 'playMusic.interactor.haveToSpecifyKeyword')
 						return
@@ -194,7 +194,7 @@ export class AddInteractor {
 
 					await this.search(args[0])
 				},
-				searchArtist: async args => {
+				searchArtist: async (args) => {
 					if (args.length < 1) {
 						await this.gc.send(msg, 'playMusic.interactor.haveToSpecifyKeyword')
 						return
@@ -202,7 +202,7 @@ export class AddInteractor {
 
 					await this.searchArtist(args[0])
 				},
-				searchAlbum: async args => {
+				searchAlbum: async (args) => {
 					if (args.length < 1) {
 						await this.gc.send(msg, 'playMusic.interactor.haveToSpecifyKeyword')
 						return
@@ -210,16 +210,16 @@ export class AddInteractor {
 
 					await this.searchAlbum(args[0])
 				},
-				show: async args => {
+				show: async (args) => {
 					await this.show(parseInt(args[0], 10) || 1)
 				},
-				select: async args => {
+				select: async (args) => {
 					await this.select(args)
 				},
-				add: async args => {
+				add: async (args) => {
 					await this.add(args)
 				},
-				play: async args => {
+				play: async (args) => {
 					const member = msg.member
 					if (!member) {
 						return

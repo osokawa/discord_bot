@@ -67,7 +67,7 @@ export class Images {
 
 		const search = utils.getOption(options, ['s', 'search'])
 		const images = search
-			? this._images.filter(x => new RegExp(search as string).test(x))
+			? this._images.filter((x) => new RegExp(search as string).test(x))
 			: this._images
 
 		if (images.length === 0) {

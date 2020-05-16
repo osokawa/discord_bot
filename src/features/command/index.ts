@@ -18,7 +18,7 @@ export class FeatureCommand extends FeatureBase {
 	}
 
 	async command(msg: discordjs.Message, name: string, args: string[]): Promise<void> {
-		const cmd = this.commands.find(x => x.name() === name)
+		const cmd = this.commands.find((x) => x.name() === name)
 		if (cmd === undefined) {
 			return
 		}

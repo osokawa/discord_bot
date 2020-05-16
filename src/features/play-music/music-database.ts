@@ -27,7 +27,7 @@ async function loadMusicLists(dir: string): Promise<MusicLists> {
 		const musicListName = parsed.name
 		musicLists.set(
 			musicListName,
-			parsed.musics.map(x => new Music({ ...x, memberMusicList: musicListName }))
+			parsed.musics.map((x) => new Music({ ...x, memberMusicList: musicListName }))
 		)
 	}
 
@@ -68,8 +68,8 @@ export class MusicDatabase {
 	async init(): Promise<void> {
 		this.musicLists = await loadMusicLists(this.musicListsDir)
 		this.allMusics = getAllMusics(this.musicLists)
-		this.artists = createMap(this.allMusics, v => v.metadata.artist)
-		this.albums = createMap(this.allMusics, v => v.metadata.album)
+		this.artists = createMap(this.allMusics, (v) => v.metadata.artist)
+		this.albums = createMap(this.allMusics, (v) => v.metadata.album)
 
 		this.allMusicsFuse = new Fuse(this.allMusics, {
 			keys: [
@@ -90,7 +90,7 @@ export class MusicDatabase {
 		map: (name: string, musics: M) => T
 	): T[] {
 		const fuse = new Fuse(
-			Array.from(names.keys(), name => ({ name })),
+			Array.from(names.keys(), (name) => ({ name })),
 			{ keys: ['name'] }
 		)
 

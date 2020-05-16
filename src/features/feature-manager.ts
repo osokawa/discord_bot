@@ -127,7 +127,7 @@ export default class {
 			}
 		}
 
-		await utils.forEachAsyncOf(continuations, f => f())
+		await utils.forEachAsyncOf(continuations, (f) => f())
 	}
 
 	// discord.js の message イベントからのみ呼ばれることを想定

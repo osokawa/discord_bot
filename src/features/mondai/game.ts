@@ -257,12 +257,12 @@ export class Game {
 				const buf = await generateImageMap(
 					1920,
 					1080,
-					this.incorrectImageLog.map(x => x.filename)
+					this.incorrectImageLog.map((x) => x.filename)
 				)
 				await this.gc.sendToChannel(
 					this.channelInstance.channel,
 					'mondai.incorrectImageMap',
-					{ answers: this.incorrectImageLog.map(x => x.answer) },
+					{ answers: this.incorrectImageLog.map((x) => x.answer) },
 					{ files: [buf] }
 				)
 			}

@@ -128,10 +128,7 @@ class FeatureMondaiCommand implements Command {
 	}
 
 	async command(msg: discordjs.Message, args: string[]): Promise<void> {
-		await this.feature.storageDriver
-			.channel(msg)
-			.get<Mondai>('mondai')
-			.onCommand(msg, args)
+		await this.feature.storageDriver.channel(msg).get<Mondai>('mondai').onCommand(msg, args)
 	}
 }
 
@@ -144,7 +141,7 @@ export class FeatureMondai extends CommonFeatureBase {
 
 	protected async initImpl(): Promise<void> {
 		this.storageDriver.setChannelStorageConstructor(
-			ch =>
+			(ch) =>
 				new StorageType(
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					new Map<string, any>([['mondai', new Mondai(this, ch, this.config)]])
@@ -158,9 +155,6 @@ export class FeatureMondai extends CommonFeatureBase {
 	}
 
 	async onMessageImpl(msg: discordjs.Message): Promise<void> {
-		await this.storageDriver
-			.channel(msg)
-			.get<Mondai>('mondai')
-			.onMessage(msg)
+		await this.storageDriver.channel(msg).get<Mondai>('mondai').onMessage(msg)
 	}
 }
