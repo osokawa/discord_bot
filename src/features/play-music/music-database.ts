@@ -57,7 +57,7 @@ function createMap<K, V>(array: V[], keyFunc: (val: V) => K | undefined): Map<K,
 
 export class MusicDatabase {
 	private allMusics: Music[] = []
-	private allMusicsFuse!: Fuse<Music, Fuse.FuseOptions<Music>>
+	private allMusicsFuse!: Fuse<Music, Fuse.IFuseOptions<Music>>
 
 	private musicLists: Map<string, Music[]> = new Map()
 	private artists: Map<string, Music[]> = new Map()
@@ -81,7 +81,7 @@ export class MusicDatabase {
 	}
 
 	search(keyword: string): Music[] {
-		return this.allMusicsFuse.search(keyword) as Music[]
+		return this.allMusicsFuse.search(keyword).map((x) => x.item)
 	}
 
 	private searchName<T, M>(
@@ -94,7 +94,9 @@ export class MusicDatabase {
 			{ keys: ['name'] }
 		)
 
-		return fuse.search(keyword).map(x => map(x.name, names.get(x.name) ?? utils.unreachable()))
+		return fuse
+			.search(keyword)
+			.map((x) => map(x.item.name, names.get(x.item.name) ?? utils.unreachable()))
 	}
 
 	searchArtistName(keyword: string): Artist[] {
