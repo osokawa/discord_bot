@@ -133,6 +133,10 @@ class PlayMusicCommand implements Command {
 		await this.feature.reload()
 	}
 
+	async next(): Promise<void> {
+		await this.feature.next()
+	}
+
 	async command(msg: discordjs.Message, args: string[]): Promise<void> {
 		await utils.subCommandProxy(
 			{
@@ -141,6 +145,7 @@ class PlayMusicCommand implements Command {
 				stop: () => this.stop(),
 				reload: () => this.reload(),
 				edit: (a, m) => this.edit(a, m),
+				next: () => this.next(),
 			},
 			args,
 			msg
@@ -199,6 +204,7 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 		}
 
 		this.destroyDispather()
+
 		{
 			const [dispatcher, finalizer] = music.createDispatcher(this.connection)
 			this.dispatcher = dispatcher
@@ -206,17 +212,7 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 		}
 
 		this.dispatcher.on('finish', () => {
-			this.destroyDispather()
-			if (this.connection === undefined) {
-				return
-			}
-
-			if (this.playlist.isEmpty) {
-				return
-			}
-
-			this.playlist.next()
-			this.play()
+			this.next()
 		})
 
 		this.dispatcher.on('error', (error) => {
@@ -227,6 +223,20 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 		})
 
 		return Promise.resolve()
+	}
+
+	async next(): Promise<void> {
+		this.destroyDispather()
+		if (this.connection === undefined) {
+			return
+		}
+
+		if (this.playlist.isEmpty) {
+			return
+		}
+
+		this.playlist.next()
+		return await this.play()
 	}
 
 	destroyDispather(): void {
