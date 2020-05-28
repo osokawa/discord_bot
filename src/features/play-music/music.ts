@@ -1,3 +1,7 @@
+import * as discordjs from 'discord.js'
+import youtubedl from 'youtube-dl'
+import { Readable } from 'stream'
+
 type FieldNames<T> = {
 	[P in keyof T]: T[P] extends Function ? never : P
 }[keyof T]
@@ -29,7 +33,15 @@ export class MusicMetadata {
 
 export type MusicMetadataObject = Fields<MusicMetadata>
 
-export class Music implements ListDisplayable, Selectable {
+export interface Music extends ListDisplayable, Selectable {
+	getTitle(): string
+	// 戻り値の関数は再生終了後の後処理用
+	createDispatcher(
+		connection: discordjs.VoiceConnection
+	): [discordjs.StreamDispatcher, (() => void) | undefined]
+}
+
+export class MusicFile implements Music {
 	readonly title: string
 	readonly path: string
 	readonly metadata: MusicMetadata
@@ -42,6 +54,10 @@ export class Music implements ListDisplayable, Selectable {
 		this.memberMusicList = obj.memberMusicList
 	}
 
+	getTitle(): string {
+		return this.metadata.title
+	}
+
 	toListString(): string {
 		return `${this.metadata.title} (from: ${this.memberMusicList})`
 	}
@@ -49,9 +65,15 @@ export class Music implements ListDisplayable, Selectable {
 	select(): Music[] | undefined {
 		return
 	}
+
+	createDispatcher(
+		connection: discordjs.VoiceConnection
+	): [discordjs.StreamDispatcher, (() => void) | undefined] {
+		return [connection.play(this.path), undefined]
+	}
 }
 
-export type MusicObject = Fields<Music> & { readonly metadata: MusicMetadataObject }
+export type MusicObject = Fields<MusicFile> & { readonly metadata: MusicMetadataObject }
 
 export class Artist implements ListDisplayable, Selectable {
 	constructor(private readonly _name: string, private readonly musics: Music[]) {}
@@ -82,5 +104,34 @@ export class Album implements ListDisplayable, Selectable {
 
 	select(): Music[] | undefined {
 		return this.musics
+	}
+}
+
+export class YouTubeMusic implements Music {
+	constructor(private url: string) {}
+
+	getTitle(): string {
+		return this.url
+	}
+
+	toListString(): string {
+		return `(youtube) ${this.url}`
+	}
+
+	select(): Music[] | undefined {
+		return
+	}
+
+	createDispatcher(
+		connection: discordjs.VoiceConnection
+	): [discordjs.StreamDispatcher, (() => void) | undefined] {
+		// とりあえず動く
+		const stream = youtubedl(this.url, [], {}) as Readable
+		return [
+			connection.play(stream),
+			(): void => {
+				stream.destroy()
+			},
+		]
 	}
 }

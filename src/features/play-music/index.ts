@@ -6,6 +6,7 @@ import GlobalConfig from 'Src/global-config'
 import * as utils from 'Src/utils'
 
 import { Playlist } from 'Src/features/play-music/playlist'
+import { Music, YouTubeMusic } from 'Src/features/play-music/music'
 import { MusicDatabase } from 'Src/features/play-music/music-database'
 import { AddInteractor } from 'Src/features/play-music/add-interactor'
 
@@ -22,53 +23,6 @@ class PlayMusicCommand implements Command {
 
 	description(): string {
 		return '音楽再生'
-	}
-
-	async play(rawArgs: string[], msg: discordjs.Message): Promise<void> {
-		let args
-		try {
-			;({ args } = utils.parseCommandArgs(rawArgs, [], 0))
-		} catch (e) {
-			await this.gc.send(msg, 'playMusic.invalidCommand', { e })
-			return
-		}
-
-		const member = msg.member
-		if (!member) {
-			return
-		}
-
-		if (!member.voice.channel) {
-			msg.reply('ボイスチャンネルに入ってから言うロボ')
-			return
-		}
-
-		if (args.length === 0) {
-			if (this.feature.playlist.isEmpty) {
-				msg.reply('今はプレイリストが空ロボ')
-				return
-			}
-
-			await this.feature.makeConnection(member.voice.channel)
-			await this.feature.play()
-			return
-		}
-
-		this.feature.playlist.clear()
-
-		for (const arg of args) {
-			const res = this.feature.database.search(arg)
-			if (0 < res.length) {
-				const music = res[0]
-				this.feature.playlist.addMusic(music)
-				msg.reply(`${music.metadata.title} を再生するロボ!`)
-			} else {
-				msg.reply('そんな曲は無いロボ')
-			}
-		}
-
-		await this.feature.makeConnection(member.voice.channel)
-		await this.feature.play()
 	}
 
 	async edit(rawArgs: string[], msg: discordjs.Message): Promise<void> {
@@ -98,24 +52,77 @@ class PlayMusicCommand implements Command {
 		return
 	}
 
-	async add(rawArgs: string[], msg: discordjs.Message): Promise<void> {
-		let args
+	private async addToPlaylist(
+		msg: discordjs.Message,
+		keywords: string[],
+		isYouTube: boolean
+	): Promise<void> {
+		for (const keyword of keywords) {
+			let music: Music | undefined
+
+			if (isYouTube) {
+				music = new YouTubeMusic(keyword)
+			} else {
+				music = this.feature.database.search(keyword)[0]
+			}
+
+			if (music) {
+				this.feature.playlist.addMusic(music)
+				await msg.reply(`${music.getTitle()} をプレイリストに追加するロボ!`)
+			} else {
+				await msg.reply('そんな曲は無いロボ')
+			}
+		}
+	}
+
+	async play(rawArgs: string[], msg: discordjs.Message): Promise<void> {
+		let args, options
 		try {
-			;({ args } = utils.parseCommandArgs(rawArgs, [], 1))
+			;({ args, options } = utils.parseCommandArgs(rawArgs, ['youtube'], 0))
 		} catch (e) {
 			await this.gc.send(msg, 'playMusic.invalidCommand', { e })
 			return
 		}
 
-		for (const arg of args) {
-			const res = this.feature.database.search(arg)[0]
-			if (res) {
-				this.feature.playlist.addMusic(res)
-				msg.reply(`${res.title} をプレイリストに追加するロボ!`)
-			} else {
-				msg.reply('そんな曲は無いロボ')
-			}
+		const member = msg.member
+		if (!member) {
+			return
 		}
+
+		if (!member.voice.channel) {
+			msg.reply('ボイスチャンネルに入ってから言うロボ')
+			return
+		}
+
+		if (args.length === 0) {
+			if (this.feature.playlist.isEmpty) {
+				msg.reply('今はプレイリストが空ロボ')
+				return
+			}
+
+			await this.feature.makeConnection(member.voice.channel)
+			await this.feature.play()
+			return
+		}
+
+		this.feature.playlist.clear()
+
+		await this.addToPlaylist(msg, args, utils.getOption(options, ['y', 'youtube']) as boolean)
+
+		await this.feature.makeConnection(member.voice.channel)
+		await this.feature.play()
+	}
+
+	async add(rawArgs: string[], msg: discordjs.Message): Promise<void> {
+		let args, options
+		try {
+			;({ args, options } = utils.parseCommandArgs(rawArgs, ['youtube'], 1))
+		} catch (e) {
+			await this.gc.send(msg, 'playMusic.invalidCommand', { e })
+			return
+		}
+
+		await this.addToPlaylist(msg, args, utils.getOption(options, ['y', 'youtube']) as boolean)
 	}
 
 	async stop(): Promise<void> {
@@ -126,6 +133,10 @@ class PlayMusicCommand implements Command {
 		await this.feature.reload()
 	}
 
+	async next(): Promise<void> {
+		await this.feature.next()
+	}
+
 	async command(msg: discordjs.Message, args: string[]): Promise<void> {
 		await utils.subCommandProxy(
 			{
@@ -134,6 +145,7 @@ class PlayMusicCommand implements Command {
 				stop: () => this.stop(),
 				reload: () => this.reload(),
 				edit: (a, m) => this.edit(a, m),
+				next: () => this.next(),
 			},
 			args,
 			msg
@@ -145,6 +157,7 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 	interactors: Set<AddInteractor> = new Set()
 	private connection: discordjs.VoiceConnection | undefined
 	private dispatcher: discordjs.StreamDispatcher | undefined
+	private musicFinalizer: (() => void) | undefined
 	database!: MusicDatabase
 
 	playlist: Playlist = new Playlist()
@@ -191,27 +204,48 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 		}
 
 		this.destroyDispather()
-		this.dispatcher = this.connection.play(music.path)
+
+		{
+			const [dispatcher, finalizer] = music.createDispatcher(this.connection)
+			this.dispatcher = dispatcher
+			this.musicFinalizer = finalizer
+		}
+
 		this.dispatcher.on('finish', () => {
+			this.next()
+		})
+
+		this.dispatcher.on('error', (error) => {
+			console.error(error)
 			this.destroyDispather()
-			if (this.connection === undefined) {
-				return
-			}
 
-			if (this.playlist.isEmpty) {
-				return
-			}
-
-			this.playlist.next()
-			this.play()
+			// TODO: どうにかしてテキストチャンネルに通知を送りたい所
 		})
 
 		return Promise.resolve()
 	}
 
+	async next(): Promise<void> {
+		this.destroyDispather()
+		if (this.connection === undefined) {
+			return
+		}
+
+		if (this.playlist.isEmpty) {
+			return
+		}
+
+		this.playlist.next()
+		return await this.play()
+	}
+
 	destroyDispather(): void {
 		this.dispatcher?.destroy()
 		this.dispatcher = undefined
+
+		if (this.musicFinalizer !== undefined) {
+			this.musicFinalizer()
+		}
 	}
 
 	async closeConnection(): Promise<void> {
