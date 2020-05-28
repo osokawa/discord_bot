@@ -78,7 +78,7 @@ class PlayMusicCommand implements Command {
 	async play(rawArgs: string[], msg: discordjs.Message): Promise<void> {
 		let args, options
 		try {
-			;({ args, options } = utils.parseCommandArgs(rawArgs, ['youtube'], 1))
+			;({ args, options } = utils.parseCommandArgs(rawArgs, ['youtube'], 0))
 		} catch (e) {
 			await this.gc.send(msg, 'playMusic.invalidCommand', { e })
 			return
