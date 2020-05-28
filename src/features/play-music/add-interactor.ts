@@ -4,7 +4,7 @@ import * as discordjs from 'discord.js'
 import GlobalConfig from 'Src/global-config'
 import * as utils from 'Src/utils'
 
-import { FeaturePlayMusic } from 'Src/features/play-music'
+import { Core } from 'Src/features/play-music/core'
 import { Music, Artist, Album } from 'Src/features/play-music/music'
 import { Playlist } from 'Src/features/play-music/playlist'
 
@@ -52,11 +52,11 @@ export class AddInteractor {
 
 	constructor(
 		private channel: utils.LikeTextChannel,
-		private feature: FeaturePlayMusic,
+		private core: Core,
 		private playlist: Playlist,
 		private done: () => void
 	) {
-		this.gc = this.feature.manager.gc
+		this.gc = this.core.gc
 	}
 
 	private setMusicResult(musics: Music[]): void {
@@ -68,14 +68,14 @@ export class AddInteractor {
 	}
 
 	async search(keyword: string): Promise<void> {
-		this.setMusicResult(this.feature.database.search(keyword))
+		this.setMusicResult(this.core.database.search(keyword))
 		await this.show(1)
 	}
 
 	async searchArtist(keyword: string): Promise<void> {
 		this.searchResult = {
 			kind: 'artists',
-			value: this.feature.database.searchArtistName(keyword),
+			value: this.core.database.searchArtistName(keyword),
 		}
 		await this.show(1)
 	}
@@ -83,7 +83,7 @@ export class AddInteractor {
 	async searchAlbum(keyword: string): Promise<void> {
 		this.searchResult = {
 			kind: 'albums',
-			value: this.feature.database.searchAlbumName(keyword),
+			value: this.core.database.searchAlbumName(keyword),
 		}
 		await this.show(1)
 	}
@@ -174,6 +174,10 @@ export class AddInteractor {
 		return addedMusics
 	}
 
+	quit(): void {
+		this.done()
+	}
+
 	async onMessage(msg: discordjs.Message): Promise<void> {
 		const res = utils.parseShellLikeCommand(msg.content)
 		if (res === undefined || res.length < 1) {
@@ -234,11 +238,11 @@ export class AddInteractor {
 
 					await this.add(args)
 
-					await this.feature.makeConnection(member.voice.channel)
-					await this.feature.play()
+					await this.core.makeConnection(member.voice.channel)
+					await this.core.play()
 				},
 				quit: async () => {
-					this.done()
+					this.quit()
 					await this.gc.send(msg, 'playMusic.interactor.quit')
 				},
 			},

@@ -5,10 +5,9 @@ import { Command } from 'Src/features/command'
 import GlobalConfig from 'Src/global-config'
 import * as utils from 'Src/utils'
 
-import { Playlist } from 'Src/features/play-music/playlist'
+import { Core } from 'Src/features/play-music/core'
 import { Music, YouTubeMusic } from 'Src/features/play-music/music'
 import { MusicDatabase } from 'Src/features/play-music/music-database'
-import { AddInteractor } from 'Src/features/play-music/add-interactor'
 
 class PlayMusicCommand implements Command {
 	private readonly gc: GlobalConfig
@@ -25,7 +24,25 @@ class PlayMusicCommand implements Command {
 		return '音楽再生'
 	}
 
+	async isValidState(msg: discordjs.Message): Promise<Core | undefined> {
+		if (this.feature.core === undefined) {
+			await this.gc.send(msg, 'playMusic.invalidState')
+			return
+		}
+
+		if (msg.channel.id !== this.feature.core.boundTextChannel.id) {
+			await this.gc.send(msg, 'playMusic.alreadyUsedInAnotherChannel')
+			return
+		}
+		return this.feature.core
+	}
+
 	async edit(rawArgs: string[], msg: discordjs.Message): Promise<void> {
+		const core = await this.isValidState(msg)
+		if (core === undefined) {
+			return
+		}
+
 		let args
 		try {
 			;({ args } = utils.parseCommandArgs(rawArgs, [], 0))
@@ -39,12 +56,12 @@ class PlayMusicCommand implements Command {
 			return
 		}
 
-		if (this.feature.interactors.size !== 0) {
+		if (core.interactors.size !== 0) {
 			await msg.reply('今まさにインタラクションモード')
 			return
 		}
 
-		const i = this.feature.createInteractor(msg)
+		const i = core.createInteractor(msg)
 		await i.welcome()
 		if (args.length === 1) {
 			await i.search(args[0])
@@ -53,6 +70,7 @@ class PlayMusicCommand implements Command {
 	}
 
 	private async addToPlaylist(
+		core: Core,
 		msg: discordjs.Message,
 		keywords: string[],
 		isYouTube: boolean
@@ -67,7 +85,7 @@ class PlayMusicCommand implements Command {
 			}
 
 			if (music) {
-				this.feature.playlist.addMusic(music)
+				core.playlist.addMusic(music)
 				await msg.reply(`${music.getTitle()} をプレイリストに追加するロボ!`)
 			} else {
 				await msg.reply('そんな曲は無いロボ')
@@ -76,6 +94,13 @@ class PlayMusicCommand implements Command {
 	}
 
 	async play(rawArgs: string[], msg: discordjs.Message): Promise<void> {
+		let core = this.feature.core
+
+		if (core !== undefined && core.boundTextChannel.id !== msg.channel.id) {
+			await this.gc.send(msg, 'playMusic.alreadyUsedInAnotherChannel')
+			return
+		}
+
 		let args, options
 		try {
 			;({ args, options } = utils.parseCommandArgs(rawArgs, ['youtube'], 0))
@@ -94,26 +119,35 @@ class PlayMusicCommand implements Command {
 			return
 		}
 
-		if (args.length === 0) {
-			if (this.feature.playlist.isEmpty) {
-				msg.reply('今はプレイリストが空ロボ')
-				return
-			}
-
-			await this.feature.makeConnection(member.voice.channel)
-			await this.feature.play()
+		if (args.length === 0 && (core === undefined || core.playlist.isEmpty)) {
+			msg.reply('今はプレイリストが空ロボ')
 			return
 		}
 
-		this.feature.playlist.clear()
+		if (core === undefined) {
+			core = await this.feature.createCore(msg.channel)
+		}
 
-		await this.addToPlaylist(msg, args, utils.getOption(options, ['y', 'youtube']) as boolean)
+		if (args.length !== 0) {
+			core.playlist.clear()
+			await this.addToPlaylist(
+				core,
+				msg,
+				args,
+				utils.getOption(options, ['y', 'youtube']) as boolean
+			)
+		}
 
-		await this.feature.makeConnection(member.voice.channel)
-		await this.feature.play()
+		await core.makeConnection(member.voice.channel)
+		await core.play()
 	}
 
 	async add(rawArgs: string[], msg: discordjs.Message): Promise<void> {
+		const core = await this.isValidState(msg)
+		if (core === undefined) {
+			return
+		}
+
 		let args, options
 		try {
 			;({ args, options } = utils.parseCommandArgs(rawArgs, ['youtube'], 1))
@@ -122,19 +156,39 @@ class PlayMusicCommand implements Command {
 			return
 		}
 
-		await this.addToPlaylist(msg, args, utils.getOption(options, ['y', 'youtube']) as boolean)
+		await this.addToPlaylist(
+			core,
+			msg,
+			args,
+			utils.getOption(options, ['y', 'youtube']) as boolean
+		)
 	}
 
-	async stop(): Promise<void> {
-		await this.feature.closeConnection()
+	async stop(msg: discordjs.Message): Promise<void> {
+		const core = await this.isValidState(msg)
+		if (core === undefined) {
+			return
+		}
+
+		await this.feature.destoryCore()
 	}
 
-	async reload(): Promise<void> {
+	async reload(msg: discordjs.Message): Promise<void> {
+		const core = await this.isValidState(msg)
+		if (core === undefined) {
+			return
+		}
+
 		await this.feature.reload()
 	}
 
-	async next(): Promise<void> {
-		await this.feature.next()
+	async next(msg: discordjs.Message): Promise<void> {
+		const core = await this.isValidState(msg)
+		if (core === undefined) {
+			return
+		}
+
+		await core.next()
 	}
 
 	async command(msg: discordjs.Message, args: string[]): Promise<void> {
@@ -142,10 +196,10 @@ class PlayMusicCommand implements Command {
 			{
 				play: (a, m) => this.play(a, m),
 				add: (a, m) => this.add(a, m),
-				stop: () => this.stop(),
-				reload: () => this.reload(),
+				stop: (_, m) => this.stop(m),
+				reload: (_, m) => this.reload(m),
 				edit: (a, m) => this.edit(a, m),
-				next: () => this.next(),
+				next: (_, m) => this.next(m),
 			},
 			args,
 			msg
@@ -154,14 +208,8 @@ class PlayMusicCommand implements Command {
 }
 
 export class FeaturePlayMusic extends CommonFeatureBase {
-	interactors: Set<AddInteractor> = new Set()
-	private connection: discordjs.VoiceConnection | undefined
-	private dispatcher: discordjs.StreamDispatcher | undefined
-	private musicFinalizer: (() => void) | undefined
+	core: Core | undefined
 	database!: MusicDatabase
-
-	playlist: Playlist = new Playlist()
-	currentPlayingTrack: number | undefined
 
 	constructor(public readonly cmdname: string) {
 		super()
@@ -173,18 +221,7 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 	}
 
 	async onMessageImpl(msg: discordjs.Message): Promise<void> {
-		for (const i of this.interactors) {
-			await i.onMessage(msg)
-		}
-	}
-
-	createInteractor(msg: discordjs.Message): AddInteractor {
-		const i = new AddInteractor(msg.channel, this, this.playlist, () => {
-			this.interactors.delete(i)
-		})
-		this.interactors.add(i)
-
-		return i
+		await this.core?.onMessage(msg)
 	}
 
 	async reload(): Promise<void> {
@@ -193,82 +230,18 @@ export class FeaturePlayMusic extends CommonFeatureBase {
 		this.database = database
 	}
 
-	play(): Promise<void> {
-		if (this.connection === undefined) {
-			throw '接続中のコネクションがない'
-		}
-
-		const music = this.playlist.currentMusic
-		if (!music) {
-			throw 'だめ'
-		}
-
-		this.destroyDispather()
-
-		{
-			const [dispatcher, finalizer] = music.createDispatcher(this.connection)
-			this.dispatcher = dispatcher
-			this.musicFinalizer = finalizer
-		}
-
-		this.dispatcher.on('finish', () => {
-			this.next()
-		})
-
-		this.dispatcher.on('error', (error) => {
-			console.error(error)
-			this.destroyDispather()
-
-			// TODO: どうにかしてテキストチャンネルに通知を送りたい所
-		})
-
-		return Promise.resolve()
+	async createCore(channel: utils.LikeTextChannel): Promise<Core> {
+		await this.destoryCore()
+		this.core = new Core(this, channel)
+		return this.core
 	}
 
-	async next(): Promise<void> {
-		this.destroyDispather()
-		if (this.connection === undefined) {
-			return
-		}
-
-		if (this.playlist.isEmpty) {
-			return
-		}
-
-		this.playlist.next()
-		return await this.play()
-	}
-
-	destroyDispather(): void {
-		this.dispatcher?.destroy()
-		this.dispatcher = undefined
-
-		if (this.musicFinalizer !== undefined) {
-			this.musicFinalizer()
-		}
-	}
-
-	async closeConnection(): Promise<void> {
-		this.destroyDispather()
-		if (this.connection !== undefined) {
-			this.connection.disconnect()
-			this.connection = undefined
-			// 入れないと次のコネクションの作成がタイムアウトする
-			// 1秒で十分かどうかは知らない
-			await utils.delay(1000)
-		}
-	}
-
-	async makeConnection(channel: discordjs.VoiceChannel): Promise<void> {
-		if (this.connection !== undefined && channel.id === this.connection.channel.id) {
-			this.destroyDispather()
-		} else {
-			await this.closeConnection()
-		}
-		this.connection = await channel.join()
+	async destoryCore(): Promise<void> {
+		await this.core?.stop()
+		this.core = undefined
 	}
 
 	async finalize(): Promise<void> {
-		await this.closeConnection()
+		await this.core?.stop()
 	}
 }

@@ -89,6 +89,9 @@ localReloadingComplete = 'ローカルにある画像を再読込したロボ!'
 
 [message.playMusic]
 haveToJoinVoiceChannel = 'ボイスチャンネルに入ってから言うロボ'
+invalidState = 'そのコマンドを使える状態でないロボ'
+alreadyUsedInAnotherChannel = '他のチャンネルで使われているので使用できないロボ'
+invalidCommand = '変なコマンドを指定していないかロボ?: <%= e %>'
 
 [message.playMusic.interactor]
 welcome = '''
