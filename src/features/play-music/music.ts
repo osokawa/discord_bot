@@ -126,7 +126,9 @@ export class YouTubeMusic implements Music {
 		connection: discordjs.VoiceConnection
 	): [discordjs.StreamDispatcher, (() => void) | undefined] {
 		// とりあえず動く
-		const stream = youtubedl(this.url, [], {}) as Readable
+		// バッファーを増やすと再生が止まりにくいらしい
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const stream = youtubedl(this.url, [], { maxBuffer: 1024 * 1024 * 32 } as any) as Readable
 		return [
 			connection.play(stream),
 			(): void => {
