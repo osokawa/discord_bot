@@ -151,8 +151,8 @@ class PlayMusicCommand implements Command {
 
 	async command(msg: discordjs.Message, args: string[]): Promise<void> {
 		await utils.subCommandProxy(
-			{	
-				play: (a, m) => this.play(a, m),	
+			{
+				play: (a, m) => this.play(a, m),
 				add: (a, m) => this.add(a, m),
 				stop: () => this.stop(),
 				reload: () => this.reload(),
